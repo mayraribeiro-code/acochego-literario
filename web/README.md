@@ -24,7 +24,7 @@ Abre pelo "Ler" da Minha Biblioteca ou pelo "Ler agora" na página do livro comp
 
 O arquivo é baixado com o token do usuário (não há link público) e o código do leitor só é carregado quando alguém abre um livro. Os arquivos são enviados pelo admin em "Editar livro" → "Arquivos digitais".
 
-Ainda sem implementação: o botão "Baixar" (mostra "em breve").
+O botão "Baixar" (na página do livro e na Minha Biblioteca) consulta os arquivos que existem: com um formato baixa direto; com PDF e EPUB, pergunta qual. O download também passa pelo token, e o arquivo é salvo com o nome do livro (ex.: "Dom Casmurro.pdf").
 
 `package.json` força `@xmldom/xmldom@0.8.15` (em `overrides`) porque o epub.js 0.3.93 depende de uma versão com falhas de segurança conhecidas.
 

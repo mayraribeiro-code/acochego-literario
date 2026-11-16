@@ -198,12 +198,12 @@ export default function App() {
             onBuy={handleBuy}
             onOpenAuth={openAuth}
             onRead={() => setReadingBook(selectedBook)}
-            onDownload={() => setToast("Download em breve disponível.")}
+            onMessage={setToast}
           />
         )}
 
         {view === "library" && currentUser && (
-          <LibraryView myBooks={myBooks} onRead={setReadingBook} />
+          <LibraryView myBooks={myBooks} onRead={setReadingBook} onMessage={setToast} />
         )}
 
         {view === "admin" && currentUser?.role === "admin" && (

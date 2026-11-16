@@ -1,14 +1,17 @@
-import { BookOpen, Library, Download, Check } from "lucide-react";
+import { BookOpen, Library, Check } from "lucide-react";
 import type { Book } from "../types";
 import { Stars } from "../components/Stars";
 import { BookCover } from "../components/BookCover";
+import { DownloadButton } from "../components/DownloadButton";
 
 export function LibraryView({
   myBooks,
   onRead,
+  onMessage,
 }: {
   myBooks: Book[];
   onRead: (b: Book) => void;
+  onMessage: (message: string) => void;
 }) {
 
   return (
@@ -68,11 +71,7 @@ export function LibraryView({
                 >
                   <BookOpen className="w-3.5 h-3.5" /> Ler
                 </button>
-                {book.format.includes("PDF") && (
-                  <button className="flex-1 py-2 bg-white border border-[rgba(49,92,76,0.15)] text-[#315C4C] text-xs font-semibold rounded-lg hover:bg-[rgba(49,92,76,0.05)] transition-colors flex items-center justify-center gap-1.5">
-                    <Download className="w-3.5 h-3.5" /> Baixar
-                  </button>
-                )}
+                <DownloadButton book={book} size="sm" onMessage={onMessage} />
               </div>
             </article>
           ))}

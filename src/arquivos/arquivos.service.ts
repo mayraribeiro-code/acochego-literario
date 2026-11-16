@@ -136,6 +136,7 @@ export class ArquivosService {
 
     const arquivo = await this.prismaService.arquivoDigital.findUnique({
       where: { livroId_formato: { livroId, formato } },
+      include: { livro: { select: { titulo: true } } },
     });
     if (!arquivo) {
       throw new NotFoundException(
@@ -147,6 +148,18 @@ export class ArquivosService {
       stream: createReadStream(join(this.pasta, arquivo.caminho)),
       mimeType: TIPOS[formato].mimeType,
       tamanhoBytes: arquivo.tamanhoBytes,
+      nomeDownload: `${arquivo.livro.titulo}.${TIPOS[formato].extensao}`,
     };
   }
+}
+
+// Content-Disposition de anexo com o nome do livro. "filename" leva uma versão
+// só com ASCII (navegadores antigos); "filename*" leva o nome com acentos.
+export function dispositionDeAnexo(nome: string) {
+  const ascii = nome
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^\w.\- ]/g, '')
+    .trim();
+  return `attachment; filename="${ascii || 'livro'}"; filename*=UTF-8''${encodeURIComponent(nome)}`;
 }

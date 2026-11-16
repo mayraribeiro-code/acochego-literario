@@ -264,6 +264,21 @@ export async function fetchBookContent(bookId: string, format: BookFileFormat) {
   return res.arrayBuffer();
 }
 
+// Baixa o arquivo com o token e entrega ao navegador como download,
+// com o nome do livro (ex.: "Dom Casmurro.pdf").
+export async function downloadBook(bookId: string, format: BookFileFormat, title: string) {
+  const res = await send(`/leitura/${bookId}/${format}/download`, { auth: true });
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${title}.${format.toLowerCase()}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Dá tempo ao navegador de começar o download antes de liberar a memória.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 export async function fetchBookFiles(bookId: string): Promise<BookFile[]> {
   const arquivos = await request<
     { formato: BookFileFormat; nomeOriginal: string; tamanhoBytes: number }[]

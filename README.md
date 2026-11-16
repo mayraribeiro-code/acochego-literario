@@ -57,6 +57,7 @@ A API estará disponível em: `http://localhost:3000`
 | DELETE | `/admin/livros/:id/arquivos/:formato` | admin | remove o arquivo `PDF` ou `EPUB` |
 | GET | `/leitura/:livroId` | quem comprou | formatos disponíveis para leitura |
 | GET | `/leitura/:livroId/:formato` | quem comprou | conteúdo do arquivo, para o leitor do site |
+| GET | `/leitura/:livroId/:formato/download` | quem comprou | o mesmo arquivo como anexo, com o nome do livro |
 
 Rotas "logado", "cliente" e "admin" exigem o header `Authorization: Bearer <token>`.
 

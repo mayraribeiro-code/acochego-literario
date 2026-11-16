@@ -1,8 +1,9 @@
-import { BookOpen, Download, Check, ArrowLeft, ShoppingBag } from "lucide-react";
+import { BookOpen, Check, ArrowLeft, ShoppingBag } from "lucide-react";
 import type { AppUser, AuthMode, Book } from "../types";
 import { fmt } from "../lib/format";
 import { Stars } from "../components/Stars";
 import { GenreBadge } from "../components/GenreBadge";
+import { DownloadButton } from "../components/DownloadButton";
 
 export function BookDetailView({
   book,
@@ -12,7 +13,7 @@ export function BookDetailView({
   onBuy,
   onOpenAuth,
   onRead,
-  onDownload,
+  onMessage,
 }: {
   book: Book;
   currentUser: AppUser | null;
@@ -21,7 +22,7 @@ export function BookDetailView({
   onBuy: (b: Book) => void;
   onOpenAuth: (m: AuthMode) => void;
   onRead: () => void;
-  onDownload: () => void;
+  onMessage: (message: string) => void;
 }) {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -98,14 +99,7 @@ export function BookDetailView({
                 >
                   <BookOpen className="w-4 h-4" /> Ler agora
                 </button>
-                {book.format.includes("PDF") && (
-                  <button
-                    onClick={onDownload}
-                    className="w-full py-2.5 bg-white border border-[rgba(49,92,76,0.2)] text-[#315C4C] text-sm font-semibold rounded-lg hover:bg-[rgba(49,92,76,0.05)] transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Download className="w-4 h-4" /> Baixar PDF
-                  </button>
-                )}
+                <DownloadButton book={book} size="md" onMessage={onMessage} />
               </div>
             ) : (
               <>
