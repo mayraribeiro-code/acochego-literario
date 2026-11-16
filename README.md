@@ -2,6 +2,8 @@
 
 Backend do sistema de gerenciamento e venda de livros, construído com NestJS, Prisma e SQLite.
 
+O site (frontend React do "Aconchego Literário") fica na pasta [`web/`](web/README.md), com seu próprio `package.json`. Para rodar os dois: suba a API (passos abaixo) e, em outro terminal, `cd web && npm install && npm run dev`.
+
 ## 🚀 Como rodar o projeto localmente
 
 **1. Instale as dependências**
