@@ -264,6 +264,40 @@ export async function fetchBookContent(bookId: string, format: BookFileFormat) {
   return res.arrayBuffer();
 }
 
+export interface ReadingProgress {
+  format: BookFileFormat;
+  // Página do PDF ("12") ou CFI do EPUB.
+  position: string;
+  percent: number;
+}
+
+// Progresso salvo de cada formato, do mais recente para o mais antigo.
+export async function fetchReadingProgress(bookId: string): Promise<ReadingProgress[]> {
+  const r = await request<{ formato: BookFileFormat; posicao: string; percentual: number }[]>(
+    `/leitura/${bookId}/progresso`,
+    { auth: true },
+  );
+  return r.map((p) => ({ format: p.formato, position: p.posicao, percent: p.percentual }));
+}
+
+// keepalive deixa a requisição terminar mesmo se a aba for fechada.
+export async function saveReadingProgress(
+  bookId: string,
+  progress: ReadingProgress,
+  keepalive = false,
+) {
+  await send(`/leitura/${bookId}/progresso`, {
+    method: "PUT",
+    auth: true,
+    keepalive,
+    body: JSON.stringify({
+      formato: progress.format,
+      posicao: progress.position,
+      percentual: Math.max(0, Math.min(100, Math.round(progress.percent))),
+    }),
+  });
+}
+
 // Baixa o arquivo com o token e entrega ao navegador como download,
 // com o nome do livro (ex.: "Dom Casmurro.pdf").
 export async function downloadBook(bookId: string, format: BookFileFormat, title: string) {

@@ -35,8 +35,9 @@ model Usuario {
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
 
-  conta   Conta    @relation(fields: [contaId], references: [id], onDelete: Cascade)
-  compras Compra[]
+  conta      Conta              @relation(fields: [contaId], references: [id], onDelete: Cascade)
+  compras    Compra[]
+  progressos ProgressoLeitura[]
 
   @@map("usuarios")
 }
@@ -91,10 +92,11 @@ model Livro {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  autor    Autor            @relation(fields: [autorId], references: [id])
-  genero   Genero           @relation(fields: [generoId], references: [id])
-  compras  Compra[]
-  arquivos ArquivoDigital[]
+  autor      Autor              @relation(fields: [autorId], references: [id])
+  genero     Genero             @relation(fields: [generoId], references: [id])
+  compras    Compra[]
+  arquivos   ArquivoDigital[]
+  progressos ProgressoLeitura[]
 
   @@index([autorId])
   @@index([generoId])
@@ -141,4 +143,24 @@ model ArquivoDigital {
 
   @@unique([livroId, formato])
   @@map("arquivos_digitais")
+}
+
+// Onde o usuário parou em cada formato do livro. "posicao" é o número da
+// página no PDF ou o CFI (localização do epub.js) no EPUB.
+model ProgressoLeitura {
+  id         String         @id @default(uuid())
+  usuarioId  String         @map("usuario_id")
+  livroId    String         @map("livro_id")
+  formato    FormatoArquivo
+  posicao    String
+  percentual Int
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  livro   Livro   @relation(fields: [livroId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, livroId, formato])
+  @@index([livroId])
+  @@map("progressos_leitura")
 }

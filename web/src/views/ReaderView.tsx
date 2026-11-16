@@ -8,7 +8,10 @@ import {
   ApiError,
   fetchBookContent,
   fetchReadingFormats,
+  fetchReadingProgress,
+  saveReadingProgress,
   type BookFileFormat,
+  type ReadingProgress,
 } from "../lib/api";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -24,22 +27,75 @@ interface Progress {
   percent: number;
 }
 
+// Leitores avisam a posição atual por aqui (página/CFI e porcentagem).
+type ReportPosition = (position: string, percent: number) => void;
+
+const SAVE_DELAY_MS = 1500;
+
 export function ReaderView({ book, onClose }: { book: Book; onClose: () => void }) {
   const [formats, setFormats] = useState<BookFileFormat[] | null>(null);
   const [format, setFormat] = useState<BookFileFormat | null>(null);
   const [error, setError] = useState("");
 
+  // Último progresso conhecido de cada formato (vindo da API ou da leitura atual).
+  const savedRef = useRef<Partial<Record<BookFileFormat, ReadingProgress>>>({});
+  const pendingRef = useRef<ReadingProgress | null>(null);
+  const timerRef = useRef<number | undefined>(undefined);
+
   useEffect(() => {
-    fetchReadingFormats(book.id)
-      .then((f) => {
+    Promise.all([
+      fetchReadingFormats(book.id),
+      // Sem progresso salvo (ou falha ao buscar), o livro abre do começo.
+      fetchReadingProgress(book.id).catch(() => [] as ReadingProgress[]),
+    ])
+      .then(([f, progress]) => {
+        for (const p of progress) savedRef.current[p.format] ??= p;
         setFormats(f);
-        // EPUB se ajusta à tela; PDF mantém o layout da página.
-        setFormat(f.includes("EPUB") ? "EPUB" : f[0] ?? null);
+        // Abre no formato lido por último; sem histórico, prefere EPUB,
+        // que se ajusta à tela (o PDF mantém o layout da página).
+        const lastRead = progress.find((p) => f.includes(p.format))?.format;
+        setFormat(lastRead ?? (f.includes("EPUB") ? "EPUB" : f[0] ?? null));
       })
       .catch((err) =>
         setError(err instanceof ApiError ? err.message : "Não foi possível abrir o livro."),
       );
   }, [book.id]);
+
+  // Envia o progresso pendente. Falhar ao salvar não deve atrapalhar a leitura.
+  function flush(keepalive = false) {
+    window.clearTimeout(timerRef.current);
+    const pending = pendingRef.current;
+    if (!pending) return;
+    pendingRef.current = null;
+    saveReadingProgress(book.id, pending, keepalive).catch(() => {});
+  }
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+
+  // Salva ao fechar o leitor e também se a aba for fechada no meio da leitura.
+  useEffect(() => {
+    const onHide = () => flushRef.current(true);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      flushRef.current(true);
+    };
+  }, []);
+
+  function reportFor(f: BookFileFormat): ReportPosition {
+    return (position, percent) => {
+      const progress = { format: f, position, percent };
+      savedRef.current[f] = progress;
+      pendingRef.current = progress;
+      window.clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => flushRef.current(), SAVE_DELAY_MS);
+    };
+  }
+
+  function switchFormat(f: BookFileFormat) {
+    flush();
+    setFormat(f);
+  }
 
   // Esc fecha o leitor; a página de trás não rola enquanto ele está aberto.
   useEffect(() => {
@@ -86,7 +142,7 @@ export function ReaderView({ book, onClose }: { book: Book; onClose: () => void 
               {formats.map((f) => (
                 <button
                   key={f}
-                  onClick={() => setFormat(f)}
+                  onClick={() => switchFormat(f)}
                   aria-pressed={format === f}
                   className={`px-2 py-0.5 rounded-md text-xs font-medium transition-colors ${
                     format === f ? "bg-white text-[#1F3D33] shadow-sm" : "text-[#7A7264] hover:text-[#292824]"
@@ -107,9 +163,19 @@ export function ReaderView({ book, onClose }: { book: Book; onClose: () => void 
           onClose={onClose}
         />
       ) : format === "PDF" ? (
-        <PdfReader key="pdf" bookId={book.id} />
+        <PdfReader
+          key="pdf"
+          bookId={book.id}
+          initial={savedRef.current.PDF}
+          onPosition={reportFor("PDF")}
+        />
       ) : format === "EPUB" ? (
-        <EpubReader key="epub" bookId={book.id} />
+        <EpubReader
+          key="epub"
+          bookId={book.id}
+          initial={savedRef.current.EPUB}
+          onPosition={reportFor("EPUB")}
+        />
       ) : (
         <div className="flex-1 relative">
           <ReaderLoading />
@@ -121,13 +187,24 @@ export function ReaderView({ book, onClose }: { book: Book; onClose: () => void 
 
 // ── PDF ───────────────────────────────────────────────────────────────────────
 
-function PdfReader({ bookId }: { bookId: string }) {
+function PdfReader({
+  bookId,
+  initial,
+  onPosition,
+}: {
+  bookId: string;
+  initial?: ReadingProgress;
+  onPosition: ReportPosition;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [doc, setDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
   const [page, setPage] = useState(1);
   const [width, setWidth] = useState(0);
   const [error, setError] = useState("");
+  const initialRef = useRef(initial);
+  const onPositionRef = useRef(onPosition);
+  onPositionRef.current = onPosition;
 
   useEffect(() => {
     let loaded: pdfjs.PDFDocumentProxy | null = null;
@@ -136,8 +213,14 @@ function PdfReader({ bookId }: { bookId: string }) {
       .then((data) => pdfjs.getDocument({ data }).promise)
       .then((d) => {
         loaded = d;
-        if (cancelled) void d.destroy();
-        else setDoc(d);
+        if (cancelled) {
+          void d.destroy();
+          return;
+        }
+        // Volta para a página salva (se o PDF mudou de tamanho, fica no limite).
+        const saved = Number.parseInt(initialRef.current?.position ?? "", 10);
+        setPage(Number.isFinite(saved) ? Math.min(Math.max(saved, 1), d.numPages) : 1);
+        setDoc(d);
       })
       .catch((err) =>
         !cancelled && setError(err instanceof ApiError ? err.message : "Não foi possível abrir o PDF."),
@@ -200,6 +283,10 @@ function PdfReader({ bookId }: { bookId: string }) {
     containerRef.current?.scrollTo({ top: 0 });
   }, [page]);
 
+  useEffect(() => {
+    if (doc) onPositionRef.current(String(page), (page / doc.numPages) * 100);
+  }, [doc, page]);
+
   if (error) return <ReaderMessage title="Não foi possível abrir o livro" text={error} />;
 
   return (
@@ -224,7 +311,15 @@ function PdfReader({ bookId }: { bookId: string }) {
 
 // ── EPUB ──────────────────────────────────────────────────────────────────────
 
-function EpubReader({ bookId }: { bookId: string }) {
+function EpubReader({
+  bookId,
+  initial,
+  onPosition,
+}: {
+  bookId: string;
+  initial?: ReadingProgress;
+  onPosition: ReportPosition;
+}) {
   const viewerRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const [ready, setReady] = useState(false);
@@ -232,10 +327,24 @@ function EpubReader({ bookId }: { bookId: string }) {
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
   const [error, setError] = useState("");
+  const initialRef = useRef(initial);
+  const onPositionRef = useRef(onPosition);
+  onPositionRef.current = onPosition;
 
   useEffect(() => {
     let epub: EpubBook | null = null;
     let cancelled = false;
+    // A porcentagem exata só existe depois de gerar as "locations" do livro;
+    // até lá, mantém a última conhecida.
+    let percent = initialRef.current?.percent ?? 0;
+
+    function report(cfi: string) {
+      if (epub && epub.locations.length() > 0) {
+        percent = Math.round(epub.locations.percentageFromCfi(cfi) * 100);
+      }
+      setProgress({ label: `${percent}% lido`, percent });
+      onPositionRef.current(cfi, percent);
+    }
 
     fetchBookContent(bookId, "EPUB")
       .then(async (data) => {
@@ -259,23 +368,24 @@ function EpubReader({ bookId }: { bookId: string }) {
         rendition.themes.fontSize("110%");
         renditionRef.current = rendition;
 
-        rendition.on("relocated", (location: { start: { percentage: number; displayed: { page: number; total: number } }; atStart: boolean; atEnd: boolean }) => {
+        rendition.on("relocated", (location: { start: { cfi: string }; atStart: boolean; atEnd: boolean }) => {
           setAtStart(location.atStart);
           setAtEnd(location.atEnd);
-          const percent = Math.round((location.start.percentage ?? 0) * 100);
-          setProgress({ label: `${percent}% lido`, percent });
+          report(location.start.cfi);
         });
 
-        await rendition.display();
+        // Volta para a posição salva; se ela não existir mais (arquivo trocado), abre no início.
+        const saved = initialRef.current?.position;
+        try {
+          await rendition.display(saved);
+        } catch {
+          await rendition.display();
+        }
         if (cancelled) return;
         setReady(true);
-        // As "locations" permitem calcular a porcentagem lida do livro todo.
         await epub.locations.generate(1024);
         const current = rendition.currentLocation() as unknown as { start?: { cfi: string } };
-        if (!cancelled && current?.start) {
-          const percent = Math.round(epub.locations.percentageFromCfi(current.start.cfi) * 100);
-          setProgress({ label: `${percent}% lido`, percent });
-        }
+        if (!cancelled && current?.start) report(current.start.cfi);
       })
       .catch((err) =>
         !cancelled && setError(err instanceof ApiError ? err.message : "Não foi possível abrir o EPUB."),

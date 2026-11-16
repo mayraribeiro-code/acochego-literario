@@ -58,6 +58,8 @@ A API estará disponível em: `http://localhost:3000`
 | GET | `/leitura/:livroId` | quem comprou | formatos disponíveis para leitura |
 | GET | `/leitura/:livroId/:formato` | quem comprou | conteúdo do arquivo, para o leitor do site |
 | GET | `/leitura/:livroId/:formato/download` | quem comprou | o mesmo arquivo como anexo, com o nome do livro |
+| GET | `/leitura/:livroId/progresso` | quem comprou | onde o usuário parou em cada formato (mais recente primeiro) |
+| PUT | `/leitura/:livroId/progresso` | quem comprou | salva a posição: `{ "formato": "PDF", "posicao": "12", "percentual": 40 }` (no EPUB, `posicao` é o CFI) |
 
 Rotas "logado", "cliente" e "admin" exigem o header `Authorization: Bearer <token>`.
 

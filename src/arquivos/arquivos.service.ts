@@ -11,6 +11,7 @@ import { createReadStream } from 'fs';
 import { mkdir, rm, writeFile } from 'fs/promises';
 import { join, resolve } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
+import { SalvarProgressoDto } from './dtos/progresso';
 
 export const TAMANHO_MAXIMO_BYTES = 50 * 1024 * 1024;
 
@@ -125,6 +126,43 @@ export class ArquivosService {
 
     const arquivos = await this.listar(livroId);
     return { formatos: arquivos.map((a) => a.formato) };
+  }
+
+  // Onde o usuário parou em cada formato, do mais recente para o mais antigo.
+  async progresso(usuarioId: string, livroId: string) {
+    await this.garantirQuePossui(usuarioId, livroId);
+
+    return this.prismaService.progressoLeitura.findMany({
+      where: { usuarioId, livroId },
+      select: {
+        formato: true,
+        posicao: true,
+        percentual: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async salvarProgresso(
+    usuarioId: string,
+    livroId: string,
+    dados: SalvarProgressoDto,
+  ) {
+    await this.garantirQuePossui(usuarioId, livroId);
+
+    const { formato, posicao, percentual } = dados;
+    return this.prismaService.progressoLeitura.upsert({
+      where: { usuarioId_livroId_formato: { usuarioId, livroId, formato } },
+      create: { usuarioId, livroId, formato, posicao, percentual },
+      update: { posicao, percentual },
+      select: {
+        formato: true,
+        posicao: true,
+        percentual: true,
+        updatedAt: true,
+      },
+    });
   }
 
   async abrirParaLeitura(

@@ -1,10 +1,12 @@
 import {
+  Body,
   Controller,
   Get,
   Header,
   Param,
   ParseEnumPipe,
   ParseUUIDPipe,
+  Put,
   Request,
   StreamableFile,
   UseGuards,
@@ -13,6 +15,7 @@ import { FormatoArquivo } from '@prisma/client';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { ArquivosService, dispositionDeAnexo } from './arquivos.service';
+import { SalvarProgressoDto } from './dtos/progresso';
 
 // Acesso ao conteúdo dos livros comprados. Não existe URL pública do arquivo:
 // toda leitura passa pelo token e pela verificação de compra.
@@ -27,6 +30,29 @@ export class LeituraController {
     @Param('livroId', ParseUUIDPipe) livroId: string,
   ) {
     return this.arquivosService.formatosParaLeitura(request.user.sub, livroId);
+  }
+
+  // As rotas de progresso vêm antes de ":livroId/:formato"; senão "progresso"
+  // seria lido como um formato.
+  @Get(':livroId/progresso')
+  async progresso(
+    @Request() request: AuthenticatedRequest,
+    @Param('livroId', ParseUUIDPipe) livroId: string,
+  ) {
+    return this.arquivosService.progresso(request.user.sub, livroId);
+  }
+
+  @Put(':livroId/progresso')
+  async salvarProgresso(
+    @Request() request: AuthenticatedRequest,
+    @Param('livroId', ParseUUIDPipe) livroId: string,
+    @Body() body: SalvarProgressoDto,
+  ) {
+    return this.arquivosService.salvarProgresso(
+      request.user.sub,
+      livroId,
+      body,
+    );
   }
 
   @Get(':livroId/:formato')
