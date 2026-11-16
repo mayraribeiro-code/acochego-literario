@@ -21,7 +21,7 @@ O banco é um arquivo local (`prisma/dev.db`), criado automaticamente pelo coman
 npx prisma migrate dev
 ```
 
-Esse comando também roda o seed (`prisma/seed.js`), que cria o usuário administrador com o email e a senha definidos em `ADMIN_EMAIL` e `ADMIN_PASSWORD` no `.env`. Para rodar o seed de novo manualmente:
+Esse comando também roda o seed (`prisma/seed.js`), que cria o usuário administrador com o email e a senha definidos em `ADMIN_EMAIL` e `ADMIN_PASSWORD` no `.env`, e o catálogo inicial de livros (`prisma/catalogo.js`). O seed pode rodar mais de uma vez sem duplicar nada. Para rodar o seed de novo manualmente:
 ```bash
 npx prisma db seed
 ```
@@ -32,6 +32,33 @@ npm run start:dev
 ```
 
 A API estará disponível em: `http://localhost:3000`
+
+## 📚 Endpoints
+
+| Método | Rota | Acesso | O que faz |
+| --- | --- | --- | --- |
+| POST | `/auth/signup` | público | cria conta de cliente e devolve o token |
+| POST | `/auth/signin` | público | login, devolve o token |
+| GET | `/auth/me` | logado | dados do usuário do token |
+| GET | `/livros` | público | catálogo (só livros ativos) |
+| GET | `/livros/generos` | público | gêneros que têm livros no catálogo |
+| GET | `/livros/:id` | público | detalhe de um livro ativo |
+| POST | `/compras` | cliente | compra um livro: `{ "livroId": "..." }` |
+| GET | `/compras` | logado | compras do próprio usuário (a "Minha Biblioteca") |
+| GET | `/admin/livros` | admin | todos os livros, inclusive inativos |
+| POST | `/admin/livros` | admin | cadastra livro (autor e gênero pelo nome; são criados se não existirem) |
+| PATCH | `/admin/livros/:id` | admin | edita livro; `{ "ativo": false }` tira do catálogo |
+| GET | `/admin/compras` | admin | todas as compras |
+| GET | `/admin/resumo` | admin | livros ativos, compras, clientes e receita |
+
+Rotas "logado", "cliente" e "admin" exigem o header `Authorization: Bearer <token>`.
+
+Regras de compra:
+- valores ficam em centavos (`precoCentavos`, `valorCentavos`);
+- a compra guarda o preço pago, mesmo que o preço do livro mude depois;
+- não dá para comprar livro inativo (404), indisponível (400) ou que você já tem (409);
+- a compra é registrada direto como `confirmada`, porque ainda não há pagamento;
+- livros desativados continuam na biblioteca de quem já comprou.
 
 ## 🛠️ Comandos úteis do NestJS
 

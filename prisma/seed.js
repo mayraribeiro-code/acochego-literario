@@ -1,11 +1,13 @@
-// Seed inicial: cria o usuário administrador.
+// Seed inicial: cria o usuário administrador e o catálogo de livros.
 // Roda com `npx prisma db seed` (e automaticamente após `npx prisma migrate dev` / `migrate reset`).
+// Pode rodar várias vezes: o que já existe não é duplicado.
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
+const catalogo = require('./catalogo');
 
 const prisma = new PrismaClient();
 
-async function main() {
+async function criarAdmin() {
   const email = process.env.ADMIN_EMAIL || 'admin@livraria.com';
   const senha = process.env.ADMIN_PASSWORD || 'admin123';
 
@@ -30,6 +32,37 @@ async function main() {
   });
 
   console.log(`Admin criado: ${email}`);
+}
+
+async function criarCatalogo() {
+  let criados = 0;
+
+  for (const { autor, genero, ...livro } of catalogo) {
+    const existente = await prisma.livro.findFirst({
+      where: { titulo: livro.titulo },
+    });
+    if (existente) continue;
+
+    await prisma.livro.create({
+      data: {
+        ...livro,
+        autor: {
+          connectOrCreate: { where: { nome: autor }, create: { nome: autor } },
+        },
+        genero: {
+          connectOrCreate: { where: { nome: genero }, create: { nome: genero } },
+        },
+      },
+    });
+    criados++;
+  }
+
+  console.log(`Catálogo: ${criados} livro(s) criado(s).`);
+}
+
+async function main() {
+  await criarAdmin();
+  await criarCatalogo();
 }
 
 main()

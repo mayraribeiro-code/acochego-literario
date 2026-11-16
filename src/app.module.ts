@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
+import { LivrosModule } from './livros/livros.module';
+import { ComprasModule } from './compras/compras.module';
 import { PrismaService } from './prisma/prisma.service';
 import { envValidationSchema } from './config/env.validation';
 import { ConfigModule } from '@nestjs/config';
@@ -14,6 +16,8 @@ import { ConfigModule } from '@nestjs/config';
       },
     }),
     AuthModule,
+    LivrosModule,
+    ComprasModule,
   ],
   controllers: [],
   providers: [PrismaService],

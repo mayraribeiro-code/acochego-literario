@@ -35,7 +35,86 @@ model Usuario {
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
 
-  conta Conta @relation(fields: [contaId], references: [id], onDelete: Cascade)
+  conta   Conta    @relation(fields: [contaId], references: [id], onDelete: Cascade)
+  compras Compra[]
 
   @@map("usuarios")
+}
+
+enum StatusCompra {
+  iniciada
+  confirmada
+  cancelada
+  falha
+}
+
+model Autor {
+  id        String   @id @default(uuid())
+  nome      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  livros Livro[]
+
+  @@map("autores")
+}
+
+model Genero {
+  id        String   @id @default(uuid())
+  nome      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  livros Livro[]
+
+  @@map("generos")
+}
+
+// Valores em dinheiro ficam em centavos (inteiro) para evitar erro de arredondamento.
+// A capa é desenhada pelo frontend a partir das três cores.
+model Livro {
+  id              String   @id @default(uuid())
+  titulo          String
+  sinopse         String
+  ano             Int
+  precoCentavos   Int      @map("preco_centavos")
+  formato         String
+  disponivel      Boolean  @default(true)
+  ativo           Boolean  @default(true)
+  capaCorInicio   String   @map("capa_cor_inicio")
+  capaCorFim      String   @map("capa_cor_fim")
+  capaCorTexto    String   @map("capa_cor_texto")
+  avaliacao       Float    @default(0)
+  totalAvaliacoes Int      @default(0) @map("total_avaliacoes")
+  autorId         String   @map("autor_id")
+  generoId        String   @map("genero_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  autor   Autor    @relation(fields: [autorId], references: [id])
+  genero  Genero   @relation(fields: [generoId], references: [id])
+  compras Compra[]
+
+  @@index([autorId])
+  @@index([generoId])
+  @@map("livros")
+}
+
+// Uma compra é de um único livro; o mesmo usuário não compra o mesmo livro duas vezes.
+// valorCentavos guarda o preço pago, que não muda se o preço do livro mudar depois.
+model Compra {
+  id            String       @id @default(uuid())
+  usuarioId     String       @map("usuario_id")
+  livroId       String       @map("livro_id")
+  valorCentavos Int          @map("valor_centavos")
+  status        StatusCompra @default(confirmada)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  livro   Livro   @relation(fields: [livroId], references: [id])
+
+  @@unique([usuarioId, livroId])
+  @@index([livroId])
+  @@map("compras")
 }

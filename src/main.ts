@@ -7,7 +7,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  app.useGlobalPipes(new ValidationPipe());
+  // whitelist descarta campos que não estão no DTO (ex.: "avaliacao" no PATCH de livro).
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
   await app.listen(configService.get<number>('PORT') ?? 3000);
 }
