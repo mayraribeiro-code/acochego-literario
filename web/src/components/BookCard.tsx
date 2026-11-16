@@ -39,7 +39,9 @@ export function BookCard({
           <div className="flex items-center gap-1.5 mt-2">
             <Stars rating={book.rating} />
             <span className="text-xs text-[#7A7264]">
-              {book.rating} ({book.reviews.toLocaleString("pt-BR")})
+              {book.reviews > 0
+                ? `${book.rating} (${book.reviews.toLocaleString("pt-BR")})`
+                : "Sem avaliações"}
             </span>
           </div>
           <div className="mt-2 flex items-center justify-between gap-1 flex-wrap">

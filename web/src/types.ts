@@ -19,6 +19,14 @@ export interface Book {
   active: boolean;
 }
 
+export interface Review {
+  id: string;
+  rating: number;
+  comment: string | null;
+  author: string;
+  date: string;
+}
+
 export interface AppUser {
   id: string;
   name: string;

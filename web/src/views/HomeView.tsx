@@ -170,9 +170,11 @@ export function HomeView({
                   <div className="flex items-center justify-between mt-1">
                     <div className="flex items-center gap-1">
                       <Stars rating={book.rating} />
-                      <span className="text-xs text-[#7A7264]">
-                        {book.rating}
-                      </span>
+                      {book.reviews > 0 && (
+                        <span className="text-xs text-[#7A7264]">
+                          {book.rating}
+                        </span>
+                      )}
                     </div>
                     <span className="text-sm font-bold text-[#315C4C]">
                       {fmt(book.price)}

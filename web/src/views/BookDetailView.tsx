@@ -4,6 +4,7 @@ import { fmt } from "../lib/format";
 import { Stars } from "../components/Stars";
 import { GenreBadge } from "../components/GenreBadge";
 import { DownloadButton } from "../components/DownloadButton";
+import { ReviewsSection } from "../components/ReviewsSection";
 
 export function BookDetailView({
   book,
@@ -14,6 +15,7 @@ export function BookDetailView({
   onOpenAuth,
   onRead,
   onMessage,
+  onReviewsChange,
 }: {
   book: Book;
   currentUser: AppUser | null;
@@ -23,6 +25,7 @@ export function BookDetailView({
   onOpenAuth: (m: AuthMode) => void;
   onRead: () => void;
   onMessage: (message: string) => void;
+  onReviewsChange: () => void;
 }) {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -140,12 +143,19 @@ export function BookDetailView({
 
           <div className="flex items-center gap-3 mt-4 pb-5 border-b border-[rgba(49,92,76,0.1)]">
             <Stars rating={book.rating} size="md" />
-            <span className="text-sm font-medium text-[#292824]">
-              {book.rating}
-            </span>
-            <span className="text-sm text-[#7A7264]">
-              ({book.reviews.toLocaleString("pt-BR")} avaliações)
-            </span>
+            {book.reviews > 0 ? (
+              <>
+                <span className="text-sm font-medium text-[#292824]">
+                  {book.rating}
+                </span>
+                <span className="text-sm text-[#7A7264]">
+                  ({book.reviews.toLocaleString("pt-BR")}{" "}
+                  {book.reviews === 1 ? "avaliação" : "avaliações"})
+                </span>
+              </>
+            ) : (
+              <span className="text-sm text-[#7A7264]">Sem avaliações</span>
+            )}
           </div>
 
           <div className="mt-6">
@@ -170,7 +180,10 @@ export function BookDetailView({
                 label: "Disponibilidade",
                 value: book.available ? "Disponível" : "Em breve",
               },
-              { label: "Avaliação", value: `${book.rating} / 5.0` },
+              {
+                label: "Avaliação",
+                value: book.reviews > 0 ? `${book.rating} / 5.0` : "—",
+              },
             ].map(({ label, value }) => (
               <div key={label}>
                 <p className="text-xs text-[#7A7264] font-medium uppercase tracking-wide">
@@ -182,6 +195,14 @@ export function BookDetailView({
               </div>
             ))}
           </div>
+
+          <ReviewsSection
+            book={book}
+            currentUser={currentUser}
+            purchased={purchased}
+            onChange={onReviewsChange}
+            onMessage={onMessage}
+          />
 
           {!currentUser && book.available && (
             <div className="mt-6 bg-white border border-[rgba(198,161,91,0.3)] rounded-xl p-4">

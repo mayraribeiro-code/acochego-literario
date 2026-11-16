@@ -60,6 +60,11 @@ A API estará disponível em: `http://localhost:3000`
 | GET | `/leitura/:livroId/:formato/download` | quem comprou | o mesmo arquivo como anexo, com o nome do livro |
 | GET | `/leitura/:livroId/progresso` | quem comprou | onde o usuário parou em cada formato (mais recente primeiro) |
 | PUT | `/leitura/:livroId/progresso` | quem comprou | salva a posição: `{ "formato": "PDF", "posicao": "12", "percentual": 40 }` (no EPUB, `posicao` é o CFI) |
+| GET | `/livros/:livroId/avaliacoes` | público | avaliações do livro (mais recentes primeiro), com o nome de quem avaliou |
+| GET | `/livros/:livroId/avaliacoes/minha` | logado | `{ "avaliacao": ... }` do próprio usuário, ou `null` |
+| PUT | `/livros/:livroId/avaliacoes/minha` | cliente que comprou | avalia ou edita: `{ "nota": 4, "comentario": "opcional" }` |
+| DELETE | `/livros/:livroId/avaliacoes/minha` | logado | remove a própria avaliação |
+| DELETE | `/admin/avaliacoes/:id` | admin | remove qualquer avaliação (moderação) |
 
 Rotas "logado", "cliente" e "admin" exigem o header `Authorization: Bearer <token>`.
 
@@ -69,6 +74,12 @@ Regras de compra:
 - não dá para comprar livro inativo (404), indisponível (400) ou que você já tem (409);
 - a compra é registrada direto como `confirmada`, porque ainda não há pagamento;
 - livros desativados continuam na biblioteca de quem já comprou.
+
+Avaliações:
+- só quem tem compra confirmada avalia, com nota inteira de 1 a 5 e comentário opcional (até 2000 caracteres);
+- cada usuário tem uma avaliação por livro; enviar de novo substitui a anterior;
+- `avaliacao` (média com uma casa decimal) e `totalAvaliacoes` do livro são recalculados pela API a cada mudança e não podem ser editados pelo admin;
+- as notas do seed eram fictícias e foram zeradas: agora só contam avaliações reais.
 
 Arquivos dos livros:
 - ficam na pasta `STORAGE_DIR` (padrão `./storage`, fora do git), com nome gerado pela API;

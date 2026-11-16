@@ -13,8 +13,6 @@ module.exports = [
     capaCorInicio: '#1F3D33',
     capaCorFim: '#315C4C',
     capaCorTexto: '#C6A15B',
-    avaliacao: 4.8,
-    totalAvaliacoes: 2847,
   },
   {
     titulo: 'Memórias Póstumas de Brás Cubas',
@@ -29,8 +27,6 @@ module.exports = [
     capaCorInicio: '#292824',
     capaCorFim: '#4A3728',
     capaCorTexto: '#C6A15B',
-    avaliacao: 4.9,
-    totalAvaliacoes: 1923,
   },
   {
     titulo: 'Grande Sertão: Veredas',
@@ -45,8 +41,6 @@ module.exports = [
     capaCorInicio: '#6B3A2A',
     capaCorFim: '#9C5A3C',
     capaCorTexto: '#F7F3EA',
-    avaliacao: 4.7,
-    totalAvaliacoes: 1456,
   },
   {
     titulo: 'A Hora da Estrela',
@@ -61,8 +55,6 @@ module.exports = [
     capaCorInicio: '#4B0055',
     capaCorFim: '#7B2D7E',
     capaCorTexto: '#F7F3EA',
-    avaliacao: 4.6,
-    totalAvaliacoes: 2134,
   },
   {
     titulo: 'O Cortiço',
@@ -77,8 +69,6 @@ module.exports = [
     capaCorInicio: '#7A0000',
     capaCorFim: '#A83232',
     capaCorTexto: '#F7F3EA',
-    avaliacao: 4.4,
-    totalAvaliacoes: 987,
   },
   {
     titulo: 'Gabriela, Cravo e Canela',
@@ -93,8 +83,6 @@ module.exports = [
     capaCorInicio: '#B5820A',
     capaCorFim: '#DAA520',
     capaCorTexto: '#1F3D33',
-    avaliacao: 4.5,
-    totalAvaliacoes: 1678,
   },
   {
     titulo: 'Cem Anos de Solidão',
@@ -109,8 +97,6 @@ module.exports = [
     capaCorInicio: '#2F4F3F',
     capaCorFim: '#3D7A5C',
     capaCorTexto: '#C6A15B',
-    avaliacao: 4.9,
-    totalAvaliacoes: 4521,
   },
   {
     titulo: 'Crime e Castigo',
@@ -125,8 +111,6 @@ module.exports = [
     capaCorInicio: '#1A1A4E',
     capaCorFim: '#2D3080',
     capaCorTexto: '#F7F3EA',
-    avaliacao: 4.8,
-    totalAvaliacoes: 3245,
   },
   {
     titulo: 'O Alquimista',
@@ -141,8 +125,6 @@ module.exports = [
     capaCorInicio: '#C6A15B',
     capaCorFim: '#E8C77A',
     capaCorTexto: '#1F3D33',
-    avaliacao: 4.3,
-    totalAvaliacoes: 5832,
   },
   {
     titulo: '1984',
@@ -157,8 +139,6 @@ module.exports = [
     capaCorInicio: '#1C1C1C',
     capaCorFim: '#333333',
     capaCorTexto: '#C6A15B',
-    avaliacao: 4.8,
-    totalAvaliacoes: 6123,
   },
   {
     titulo: 'Vidas Secas',
@@ -173,8 +153,6 @@ module.exports = [
     capaCorInicio: '#A0784A',
     capaCorFim: '#C4956A',
     capaCorTexto: '#1F3D33',
-    avaliacao: 4.6,
-    totalAvaliacoes: 1234,
   },
   {
     titulo: 'O Senhor dos Anéis',
@@ -189,7 +167,5 @@ module.exports = [
     capaCorInicio: '#1E3A0F',
     capaCorFim: '#2D5A1C',
     capaCorTexto: '#C6A15B',
-    avaliacao: 4.9,
-    totalAvaliacoes: 8934,
   },
 ];

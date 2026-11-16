@@ -1,0 +1,119 @@
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma, StatusCompra } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { SalvarAvaliacaoDto } from './dtos/avaliacao';
+
+// O que é mostrado de cada avaliação: só o nome de quem avaliou, nunca o email.
+const camposPublicos = {
+  id: true,
+  nota: true,
+  comentario: true,
+  createdAt: true,
+  updatedAt: true,
+  usuario: { select: { nome: true } },
+} as const;
+
+@Injectable()
+export class AvaliacoesService {
+  constructor(private prismaService: PrismaService) {}
+
+  // Avaliações de um livro do catálogo, das mais recentes para as mais antigas.
+  async listarDoLivro(livroId: string) {
+    const livro = await this.prismaService.livro.findFirst({
+      where: { id: livroId, ativo: true },
+      select: { id: true },
+    });
+    if (!livro) {
+      throw new NotFoundException('Livro não encontrado');
+    }
+
+    return this.prismaService.avaliacao.findMany({
+      where: { livroId },
+      select: camposPublicos,
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  // A avaliação do próprio usuário, ou null se ele ainda não avaliou.
+  minha(usuarioId: string, livroId: string) {
+    return this.prismaService.avaliacao.findUnique({
+      where: { usuarioId_livroId: { usuarioId, livroId } },
+      select: camposPublicos,
+    });
+  }
+
+  // Só quem comprou avalia. O livro pode estar inativo: ele continua na
+  // biblioteca de quem comprou, como acontece na leitura.
+  async salvar(usuarioId: string, livroId: string, dados: SalvarAvaliacaoDto) {
+    const compra = await this.prismaService.compra.findUnique({
+      where: { usuarioId_livroId: { usuarioId, livroId } },
+    });
+    if (!compra || compra.status !== StatusCompra.confirmada) {
+      throw new ForbiddenException('Só quem comprou o livro pode avaliá-lo');
+    }
+
+    const nota = dados.nota;
+    const comentario = dados.comentario?.trim() || null;
+
+    return this.prismaService.$transaction(async (tx) => {
+      const avaliacao = await tx.avaliacao.upsert({
+        where: { usuarioId_livroId: { usuarioId, livroId } },
+        create: { usuarioId, livroId, nota, comentario },
+        update: { nota, comentario },
+        select: camposPublicos,
+      });
+      await this.recalcularMedia(tx, livroId);
+      return avaliacao;
+    });
+  }
+
+  async removerMinha(usuarioId: string, livroId: string) {
+    const avaliacao = await this.prismaService.avaliacao.findUnique({
+      where: { usuarioId_livroId: { usuarioId, livroId } },
+    });
+    if (!avaliacao) {
+      throw new NotFoundException('Você ainda não avaliou este livro');
+    }
+    await this.remover(avaliacao.id, livroId);
+  }
+
+  // Moderação: o admin remove qualquer avaliação.
+  async removerPorId(id: string) {
+    const avaliacao = await this.prismaService.avaliacao.findUnique({
+      where: { id },
+    });
+    if (!avaliacao) {
+      throw new NotFoundException('Avaliação não encontrada');
+    }
+    await this.remover(id, avaliacao.livroId);
+  }
+
+  private remover(id: string, livroId: string) {
+    return this.prismaService.$transaction(async (tx) => {
+      await tx.avaliacao.delete({ where: { id } });
+      await this.recalcularMedia(tx, livroId);
+    });
+  }
+
+  // Média com uma casa decimal (ex.: 4.3) e total, guardados no livro para o
+  // catálogo não precisar recalcular a cada listagem.
+  private async recalcularMedia(tx: Prisma.TransactionClient, livroId: string) {
+    const { _avg, _count } = await tx.avaliacao.aggregate({
+      where: { livroId },
+      _avg: { nota: true },
+      _count: true,
+    });
+
+    await tx.livro.update({
+      where: { id: livroId },
+      data: {
+        avaliacao: Math.round((_avg.nota ?? 0) * 10) / 10,
+        totalAvaliacoes: _count,
+      },
+    });
+  }
+}

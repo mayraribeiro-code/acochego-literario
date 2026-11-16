@@ -90,6 +90,18 @@ export default function App() {
     }
   }
 
+  // Atualiza notas e médias depois de uma avaliação, sem a tela de carregamento.
+  async function refreshRatings() {
+    try {
+      const fresh = await fetchBooks();
+      setBooks(fresh);
+      setSelectedBook((prev) => fresh.find((b) => b.id === prev?.id) ?? prev);
+      if (currentUser?.role === "client") setMyBooks(await fetchLibrary());
+    } catch {
+      // Os números voltam a ficar certos no próximo carregamento do catálogo.
+    }
+  }
+
   function navigate(v: View) {
     if (v !== "bookDetail") setSelectedBook(null);
     setView(v);
@@ -199,6 +211,7 @@ export default function App() {
             onOpenAuth={openAuth}
             onRead={() => setReadingBook(selectedBook)}
             onMessage={setToast}
+            onReviewsChange={refreshRatings}
           />
         )}
 

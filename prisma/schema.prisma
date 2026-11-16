@@ -38,6 +38,7 @@ model Usuario {
   conta      Conta              @relation(fields: [contaId], references: [id], onDelete: Cascade)
   compras    Compra[]
   progressos ProgressoLeitura[]
+  avaliacoes Avaliacao[]
 
   @@map("usuarios")
 }
@@ -73,6 +74,8 @@ model Genero {
 
 // Valores em dinheiro ficam em centavos (inteiro) para evitar erro de arredondamento.
 // A capa é desenhada pelo frontend a partir das três cores.
+// avaliacao (média) e totalAvaliacoes são calculados a partir da tabela de
+// avaliações; só a API altera esses campos.
 model Livro {
   id              String   @id @default(uuid())
   titulo          String
@@ -97,6 +100,7 @@ model Livro {
   compras    Compra[]
   arquivos   ArquivoDigital[]
   progressos ProgressoLeitura[]
+  avaliacoes Avaliacao[]
 
   @@index([autorId])
   @@index([generoId])
@@ -163,4 +167,23 @@ model ProgressoLeitura {
   @@unique([usuarioId, livroId, formato])
   @@index([livroId])
   @@map("progressos_leitura")
+}
+
+// Nota de 1 a 5 (e comentário opcional) de quem comprou o livro.
+// Cada usuário avalia um livro uma vez; avaliar de novo substitui a anterior.
+model Avaliacao {
+  id         String   @id @default(uuid())
+  usuarioId  String   @map("usuario_id")
+  livroId    String   @map("livro_id")
+  nota       Int
+  comentario String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  livro   Livro   @relation(fields: [livroId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, livroId])
+  @@index([livroId])
+  @@map("avaliacoes")
 }

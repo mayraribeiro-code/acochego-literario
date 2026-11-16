@@ -1,4 +1,4 @@
-import type { AdminPurchase, AdminSummary, AppUser, Book } from "../types";
+import type { AdminPurchase, AdminSummary, AppUser, Book, Review } from "../types";
 
 // Em desenvolvimento o Vite encaminha /api para a livraria-api (ver vite.config.ts).
 const API_URL = import.meta.env.VITE_API_URL ?? "/api";
@@ -311,6 +311,60 @@ export async function downloadBook(bookId: string, format: BookFileFormat, title
   link.remove();
   // Dá tempo ao navegador de começar o download antes de liberar a memória.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+// ── Avaliações ────────────────────────────────────────────────────────────────
+
+interface AvaliacaoResponse {
+  id: string;
+  nota: number;
+  comentario: string | null;
+  updatedAt: string;
+  usuario: { nome: string };
+}
+
+function toReview(a: AvaliacaoResponse): Review {
+  return {
+    id: a.id,
+    rating: a.nota,
+    comment: a.comentario,
+    author: a.usuario.nome,
+    date: new Date(a.updatedAt).toLocaleDateString("pt-BR"),
+  };
+}
+
+// Avaliações públicas do livro, das mais recentes para as mais antigas.
+export async function fetchReviews(bookId: string) {
+  const r = await request<AvaliacaoResponse[]>(`/livros/${bookId}/avaliacoes`);
+  return r.map(toReview);
+}
+
+// A avaliação do usuário logado, ou null se ele ainda não avaliou.
+export async function fetchMyReview(bookId: string) {
+  const r = await request<{ avaliacao: AvaliacaoResponse | null }>(
+    `/livros/${bookId}/avaliacoes/minha`,
+    { auth: true },
+  );
+  return r.avaliacao && toReview(r.avaliacao);
+}
+
+// Só quem comprou o livro pode avaliar; avaliar de novo substitui a anterior.
+export async function saveMyReview(bookId: string, rating: number, comment: string) {
+  const r = await request<AvaliacaoResponse>(`/livros/${bookId}/avaliacoes/minha`, {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify({ nota: rating, comentario: comment }),
+  });
+  return toReview(r);
+}
+
+export async function deleteMyReview(bookId: string) {
+  await send(`/livros/${bookId}/avaliacoes/minha`, { method: "DELETE", auth: true });
+}
+
+// Moderação do admin.
+export async function deleteReview(reviewId: string) {
+  await send(`/admin/avaliacoes/${reviewId}`, { method: "DELETE", auth: true });
 }
 
 export async function fetchBookFiles(bookId: string): Promise<BookFile[]> {
