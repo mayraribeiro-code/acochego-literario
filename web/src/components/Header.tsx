@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, BookOpen, X, LogOut, Library, Menu, Shield } from "lucide-react";
+import { Search, BookOpen, X, LogOut, Library, Menu, Shield, UserCog } from "lucide-react";
 import type { AppUser, AuthMode, View } from "../types";
 
 export function Header({
@@ -138,6 +138,16 @@ export function Header({
                           Painel Admin
                         </button>
                       )}
+                      <button
+                        onClick={() => {
+                          onNavigate("account");
+                          setUserMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#292824] hover:bg-[rgba(49,92,76,0.05)] transition-colors"
+                      >
+                        <UserCog className="w-4 h-4 text-[#315C4C]" />
+                        Minha conta
+                      </button>
                       <hr className="my-1 border-[rgba(49,92,76,0.08)]" />
                       <button
                         onClick={() => {

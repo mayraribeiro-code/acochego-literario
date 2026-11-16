@@ -3,10 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, StatusCompra } from '@prisma/client';
+import { StatusCompra } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SalvarAvaliacaoDto } from './dtos/avaliacao';
 import { Paginacao, skipTake } from '../common/paginacao';
+import { recalcularMediaDoLivro } from './media';
 
 // O que é mostrado de cada avaliação: só o nome de quem avaliou, nunca o email.
 const camposPublicos = {
@@ -75,7 +76,7 @@ export class AvaliacoesService {
         update: { nota, comentario },
         select: camposPublicos,
       });
-      await this.recalcularMedia(tx, livroId);
+      await recalcularMediaDoLivro(tx, livroId);
       return avaliacao;
     });
   }
@@ -104,25 +105,7 @@ export class AvaliacoesService {
   private remover(id: string, livroId: string) {
     return this.prismaService.$transaction(async (tx) => {
       await tx.avaliacao.delete({ where: { id } });
-      await this.recalcularMedia(tx, livroId);
-    });
-  }
-
-  // Média com uma casa decimal (ex.: 4.3) e total, guardados no livro para o
-  // catálogo não precisar recalcular a cada listagem.
-  private async recalcularMedia(tx: Prisma.TransactionClient, livroId: string) {
-    const { _avg, _count } = await tx.avaliacao.aggregate({
-      where: { livroId },
-      _avg: { nota: true },
-      _count: true,
-    });
-
-    await tx.livro.update({
-      where: { id: livroId },
-      data: {
-        avaliacao: Math.round((_avg.nota ?? 0) * 10) / 10,
-        totalAvaliacoes: _count,
-      },
+      await recalcularMediaDoLivro(tx, livroId);
     });
   }
 }

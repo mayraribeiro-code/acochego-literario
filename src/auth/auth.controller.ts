@@ -2,11 +2,20 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  Patch,
   Post,
+  Put,
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { SignInDto, SignUpDto } from './dtos/auth';
+import {
+  AtualizarPerfilDto,
+  DesativarContaDto,
+  SignInDto,
+  SignUpDto,
+  TrocarSenhaDto,
+} from './dtos/auth';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
 import type { AuthenticatedRequest } from './auth.types';
@@ -35,5 +44,33 @@ export class AuthController {
   @Get('me')
   async me(@Request() request: AuthenticatedRequest) {
     return this.authService.me(request.user.sub);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('me')
+  async atualizarPerfil(
+    @Request() request: AuthenticatedRequest,
+    @Body() body: AtualizarPerfilDto,
+  ) {
+    return this.authService.atualizarPerfil(request.user.sub, body);
+  }
+
+  @UseGuards(AuthGuard)
+  @Put('senha')
+  async trocarSenha(
+    @Request() request: AuthenticatedRequest,
+    @Body() body: TrocarSenhaDto,
+  ) {
+    return this.authService.trocarSenha(request.user.sub, body);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('desativar')
+  @HttpCode(204)
+  async desativar(
+    @Request() request: AuthenticatedRequest,
+    @Body() body: DesativarContaDto,
+  ) {
+    await this.authService.desativar(request.user.sub, body);
   }
 }

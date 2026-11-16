@@ -15,12 +15,14 @@ enum TipoUsuario {
 // Conta guarda apenas credenciais de acesso; Usuario guarda o perfil
 // e é o ponto de relação com o restante do domínio.
 model Conta {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  senhaHash String   @map("senha_hash")
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  email        String   @unique
+  senhaHash    String   @map("senha_hash")
+  ativo        Boolean  @default(true)
+  // Vai junto no token; trocar a senha soma 1 e os tokens antigos deixam de valer.
+  versaoSessao Int      @default(0) @map("versao_sessao")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   usuario Usuario?
 
@@ -107,14 +109,23 @@ model Livro {
   @@map("livros")
 }
 
-// Uma compra é de um único livro; o mesmo usuário não compra o mesmo livro duas vezes.
+// Uma compra é de um único livro; cada usuário tem no máximo uma compra por livro.
 // valorCentavos guarda o preço pago, que não muda se o preço do livro mudar depois.
+// Ciclo: iniciada -> confirmada (pagamento aprovado) ou falha (recusado);
+// confirmada -> cancelada (pelo admin, com estorno). Depois de falha ou
+// cancelamento, comprar de novo reaproveita a mesma linha.
 model Compra {
   id            String       @id @default(uuid())
   usuarioId     String       @map("usuario_id")
   livroId       String       @map("livro_id")
   valorCentavos Int          @map("valor_centavos")
-  status        StatusCompra @default(confirmada)
+  status        StatusCompra @default(iniciada)
+  // Dados do pagamento: o id da transação no gateway e só os 4 últimos
+  // dígitos do cartão. O número completo nunca é guardado.
+  transacaoId   String?      @map("transacao_id")
+  cartaoFinal   String?      @map("cartao_final")
+  motivoFalha   String?      @map("motivo_falha")
+  canceladaEm   DateTime?    @map("cancelada_em")
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 

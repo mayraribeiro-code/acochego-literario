@@ -18,6 +18,7 @@ import { CatalogView } from "./views/CatalogView";
 import { BookDetailView } from "./views/BookDetailView";
 import { LibraryView } from "./views/LibraryView";
 import { AdminView } from "./views/AdminView";
+import { AccountView } from "./views/AccountView";
 
 // O leitor (pdf.js e epub.js) só é baixado quando alguém abre um livro.
 const ReaderView = lazy(() =>
@@ -146,6 +147,15 @@ export default function App() {
     setToast("Sessão encerrada com sucesso.");
   }
 
+  // A API já recusou o token; só limpa a sessão local.
+  function handleDeactivated() {
+    setReadingBook(null);
+    setCurrentUser(null);
+    setMyBooks([]);
+    navigate("home");
+    setToast("Sua conta foi desativada.");
+  }
+
   function handleBuy(book: Book) {
     if (!currentUser) {
       setPendingBook(book);
@@ -219,6 +229,15 @@ export default function App() {
 
         {view === "library" && currentUser && (
           <LibraryView myBooks={myBooks} onRead={setReadingBook} onMessage={setToast} />
+        )}
+
+        {view === "account" && currentUser && (
+          <AccountView
+            currentUser={currentUser}
+            onNameChange={(name) => setCurrentUser({ ...currentUser, name })}
+            onDeactivated={handleDeactivated}
+            onMessage={setToast}
+          />
         )}
 
         {view === "admin" && currentUser?.role === "admin" && (

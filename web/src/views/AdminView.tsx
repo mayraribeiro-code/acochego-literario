@@ -4,6 +4,7 @@ import type { AdminPurchase, AdminSummary, Book } from "../types";
 import { fmt } from "../lib/format";
 import {
   ApiError,
+  cancelPurchase,
   fetchAdminBooks,
   fetchAdminPurchases,
   fetchAdminSummary,
@@ -12,6 +13,13 @@ import {
 import { GenreBadge } from "../components/GenreBadge";
 import { BookCover } from "../components/BookCover";
 import { BookFormModal } from "../components/BookFormModal";
+
+const STATUS: Record<AdminPurchase["status"], { label: string; cls: string }> = {
+  confirmada: { label: "Confirmada", cls: "bg-emerald-50 text-emerald-700" },
+  iniciada: { label: "Processando", cls: "bg-amber-50 text-amber-700" },
+  falha: { label: "Pagamento recusado", cls: "bg-red-50 text-red-700" },
+  cancelada: { label: "Cancelada", cls: "bg-stone-100 text-stone-600" },
+};
 
 export function AdminView({
   onCatalogChange,
@@ -33,6 +41,9 @@ export function AdminView({
   const [purchasesTotal, setPurchasesTotal] = useState(0);
   const [purchasesPage, setPurchasesPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Compra aguardando a confirmação do cancelamento (o botão pede dois cliques).
+  const [confirmingCancel, setConfirmingCancel] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -70,6 +81,21 @@ export function AdminView({
       onMessage(err instanceof ApiError ? err.message : "Não foi possível carregar mais compras.");
     } finally {
       setLoadingMore(false);
+    }
+  }
+
+  async function onCancelPurchase(id: string) {
+    setCancelling(id);
+    try {
+      const updated = await cancelPurchase(id);
+      setPurchases((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      setConfirmingCancel(null);
+      void loadSummary();
+      onMessage("Compra cancelada e pagamento estornado.");
+    } catch (err) {
+      onMessage(err instanceof ApiError ? err.message : "Não foi possível cancelar a compra.");
+    } finally {
+      setCancelling(null);
     }
   }
 
@@ -303,14 +329,55 @@ export function AdminView({
                     </p>
                     <p className="text-xs text-[#7A7264]">
                       {row.book} · {row.date}
+                      {row.cardLast4 && ` · cartão final ${row.cardLast4}`}
                     </p>
+                    {row.status === "falha" && row.failureReason && (
+                      <p className="text-xs text-red-600 mt-0.5">{row.failureReason}</p>
+                    )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-[#315C4C]">{fmt(row.value)}</p>
-                  <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full capitalize">
-                    {row.status}
+                <div className="text-right flex-shrink-0">
+                  <p
+                    className={`text-sm font-bold ${
+                      row.status === "confirmada" ? "text-[#315C4C]" : "text-stone-400 line-through"
+                    }`}
+                  >
+                    {fmt(row.value)}
+                  </p>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${STATUS[row.status].cls}`}
+                  >
+                    {STATUS[row.status].label}
                   </span>
+                  {row.status === "confirmada" && (
+                    <div className="mt-1.5">
+                      {confirmingCancel === row.id ? (
+                        <div className="flex gap-1 justify-end">
+                          <button
+                            onClick={() => setConfirmingCancel(null)}
+                            disabled={cancelling === row.id}
+                            className="text-xs px-2 py-0.5 text-[#7A7264] hover:bg-stone-100 rounded"
+                          >
+                            Voltar
+                          </button>
+                          <button
+                            onClick={() => onCancelPurchase(row.id)}
+                            disabled={cancelling === row.id}
+                            className="text-xs px-2 py-0.5 font-semibold text-white bg-red-600 hover:bg-red-700 rounded disabled:opacity-60"
+                          >
+                            {cancelling === row.id ? "Cancelando…" : "Confirmar estorno"}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmingCancel(row.id)}
+                          className="text-xs text-red-600 hover:underline"
+                        >
+                          Cancelar compra
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

@@ -1,4 +1,4 @@
-export type View = "home" | "catalog" | "bookDetail" | "library" | "admin";
+export type View = "home" | "catalog" | "bookDetail" | "library" | "admin" | "account";
 export type AuthMode = "login" | "register";
 
 export interface Book {
@@ -47,5 +47,7 @@ export interface AdminPurchase {
   book: string;
   date: string;
   value: number;
-  status: string;
+  status: "iniciada" | "confirmada" | "cancelada" | "falha";
+  cardLast4: string | null;
+  failureReason: string | null;
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BookOpen, X, Eye, EyeOff } from "lucide-react";
 import type { AppUser, AuthMode } from "../types";
-import { ApiError, signIn, signUp } from "../lib/api";
+import { ApiError, MIN_PASSWORD, signIn, signUp } from "../lib/api";
 
 export function AuthModal({
   mode,
@@ -30,6 +30,10 @@ export function AuthModal({
     }
     if (mode === "register" && !name.trim()) {
       setError("Informe seu nome.");
+      return;
+    }
+    if (mode === "register" && password.length < MIN_PASSWORD) {
+      setError(`A senha precisa ter pelo menos ${MIN_PASSWORD} caracteres.`);
       return;
     }
     setLoading(true);

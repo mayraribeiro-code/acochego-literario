@@ -41,7 +41,9 @@ interface CompraResponse {
 interface AdminCompraResponse {
   id: string;
   valorCentavos: number;
-  status: string;
+  status: AdminPurchase["status"];
+  cartaoFinal: string | null;
+  motivoFalha: string | null;
   createdAt: string;
   usuario: { nome: string };
   livro: { titulo: string };
@@ -132,7 +134,7 @@ function translateError(status: number, message: unknown) {
     typeof message === "string" &&
     !message.startsWith("Validation") &&
     !NEST_DEFAULTS.includes(message);
-  if (ownMessage && [400, 403, 404, 409].includes(status)) return `${message}.`;
+  if (ownMessage && [400, 402, 403, 404, 409, 502].includes(status)) return `${message}.`;
   if (status === 403) return "Você não tem permissão para esta ação.";
   if (status === 400) return "Verifique os dados informados.";
   return "Algo deu errado. Tente novamente.";
@@ -250,13 +252,63 @@ export async function fetchLibrary() {
   return compras.map((c) => toBook(c.livro));
 }
 
-export async function buyBook(bookId: string) {
+// Dados do cartão como o formulário de compra os coleta.
+export interface CardInput {
+  number: string;
+  holder: string;
+  month: number;
+  year: number;
+  cvv: string;
+}
+
+// Livro gratuito não precisa de cartão. Pagamento recusado vira ApiError com o
+// motivo (ex.: "Pagamento recusado pelo banco emissor.").
+export async function buyBook(bookId: string, card?: CardInput) {
   const compra = await request<CompraResponse>("/compras", {
     method: "POST",
     auth: true,
-    body: JSON.stringify({ livroId: bookId }),
+    body: JSON.stringify({
+      livroId: bookId,
+      ...(card && {
+        cartao: {
+          numero: card.number,
+          nomeTitular: card.holder,
+          mesValidade: card.month,
+          anoValidade: card.year,
+          cvv: card.cvv,
+        },
+      }),
+    }),
   });
   return toBook(compra.livro);
+}
+
+// ── Conta do usuário ──────────────────────────────────────────────────────────
+
+// Mesmo mínimo da API (SENHA_MINIMA em src/auth/dtos/auth.ts).
+export const MIN_PASSWORD = 8;
+
+export async function updateName(name: string) {
+  await send("/auth/me", { method: "PATCH", auth: true, body: JSON.stringify({ nome: name }) });
+}
+
+// Trocar a senha derruba as outras sessões; esta continua com o token novo.
+export async function changePassword(current: string, next: string) {
+  const { accessToken } = await request<{ accessToken: string }>("/auth/senha", {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify({ senhaAtual: current, novaSenha: next }),
+  });
+  setToken(accessToken);
+}
+
+export async function deactivateAccount(password: string) {
+  await send("/auth/desativar", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ senha: password }),
+  });
+  setToken(null);
 }
 
 // ── Administração ─────────────────────────────────────────────────────────────
@@ -472,6 +524,15 @@ export async function fetchAdminSummary(): Promise<AdminSummary> {
   };
 }
 
+// Estorna o pagamento e tira o livro da biblioteca do cliente.
+export async function cancelPurchase(purchaseId: string) {
+  const c = await request<AdminCompraResponse>(`/admin/compras/${purchaseId}/cancelar`, {
+    method: "POST",
+    auth: true,
+  });
+  return toAdminPurchase(c);
+}
+
 export async function fetchAdminPurchases(page = 1): Promise<PageOf<AdminPurchase>> {
   const r = await request<PaginaResponse<AdminCompraResponse>>(
     `/admin/compras?pagina=${page}&limite=${PAGE_SIZE}`,
@@ -488,5 +549,7 @@ function toAdminPurchase(c: AdminCompraResponse): AdminPurchase {
     date: new Date(c.createdAt).toLocaleDateString("pt-BR"),
     value: c.valorCentavos / 100,
     status: c.status,
+    cardLast4: c.cartaoFinal,
+    failureReason: c.motivoFalha,
   };
 }

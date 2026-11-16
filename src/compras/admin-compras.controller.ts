@@ -1,4 +1,12 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { TipoUsuario } from '@prisma/client';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -19,6 +27,13 @@ export class AdminComprasController {
   @Get('compras')
   async listar(@QueryPagina() pagina: number, @QueryLimite() limite: number) {
     return this.comprasService.listarTodas(validarPaginacao(pagina, limite));
+  }
+
+  // Estorna o pagamento e tira o livro da biblioteca do cliente.
+  @Post('compras/:id/cancelar')
+  @HttpCode(200)
+  async cancelar(@Param('id', ParseUUIDPipe) id: string) {
+    return this.comprasService.cancelar(id);
   }
 
   // Números do topo do painel administrativo.

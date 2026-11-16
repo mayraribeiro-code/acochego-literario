@@ -27,7 +27,11 @@ export class ComprasController {
     @Request() request: AuthenticatedRequest,
     @Body() body: CreateCompraDto,
   ) {
-    return this.comprasService.comprar(request.user.sub, body.livroId);
+    return this.comprasService.comprar(
+      request.user.sub,
+      body.livroId,
+      body.cartao,
+    );
   }
 
   @Get()

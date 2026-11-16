@@ -16,6 +16,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
   },
   "dependencies": {
@@ -23,7 +24,7 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.2",
-    "@nestjs/mapped-types": "^12.0.1",
+    "@nestjs/mapped-types": "^2.1.1",
     "@nestjs/platform-express": "^11.0.1",
     "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
