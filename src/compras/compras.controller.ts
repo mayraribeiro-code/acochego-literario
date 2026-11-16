@@ -2,6 +2,9 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
   Post,
   Request,
   UseGuards,
@@ -30,6 +33,7 @@ export class ComprasController {
     return this.comprasService.comprar(
       request.user.sub,
       body.livroId,
+      body.metodo,
       body.cartao,
     );
   }
@@ -37,5 +41,26 @@ export class ComprasController {
   @Get()
   async minhas(@Request() request: AuthenticatedRequest) {
     return this.comprasService.listarDoUsuario(request.user.sub);
+  }
+
+  // Situação de uma compra do próprio usuário: o site consulta enquanto
+  // espera o pagamento do Pix.
+  @Get(':id')
+  async situacao(
+    @Request() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.comprasService.situacao(request.user.sub, id);
+  }
+
+  // Só com o pagamento simulado: faz o papel do app do banco e paga o Pix.
+  @Roles(TipoUsuario.comum)
+  @Post(':id/pix/simular-pagamento')
+  @HttpCode(200)
+  async simularPagamentoPix(
+    @Request() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.comprasService.simularPagamentoPix(request.user.sub, id);
   }
 }

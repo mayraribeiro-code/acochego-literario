@@ -2,9 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   Cobranca,
+  CobrancaPix,
   GatewayPagamento,
+  PixGerado,
   ResultadoCobranca,
 } from './gateway-pagamento';
+import { gerarPixCopiaECola } from './pix';
+
+export const CHAVE_PIX_DE_TESTE = 'pix-teste@aconchego.invalid';
+export const VALIDADE_PIX_MS = 15 * 60 * 1000;
 
 // Cartões de teste: o resultado depende do número, como nos ambientes de
 // teste dos serviços reais. Qualquer outro número válido é aprovado.
@@ -58,6 +64,29 @@ export class GatewaySimulado extends GatewayPagamento {
     // Só o valor e o id; nunca registrar dados do cartão em log.
     this.logger.log(`Cobrança aprovada: ${transacaoId} (${valorCentavos})`);
     return Promise.resolve({ aprovado: true, transacaoId });
+  }
+
+  // A chave usa o domínio reservado ".invalid", que não pode existir como
+  // chave Pix de verdade: se alguém escanear o QR code num app de banco, o
+  // app recusa e nenhum dinheiro é movido. O pagamento é confirmado pelo
+  // botão "Simular pagamento" do site.
+  readonly permiteSimularPix = true;
+
+  criarPix({ valorCentavos, referencia }: CobrancaPix): Promise<PixGerado> {
+    const transacaoId = `sim_pix_${randomUUID()}`;
+    const copiaECola = gerarPixCopiaECola({
+      chave: CHAVE_PIX_DE_TESTE,
+      nomeRecebedor: 'Aconchego Literario',
+      cidade: 'Sao Paulo',
+      valorCentavos,
+      txid: referencia,
+    });
+    this.logger.log(`Pix criado: ${transacaoId} (${valorCentavos})`);
+    return Promise.resolve({
+      transacaoId,
+      copiaECola,
+      expiraEm: new Date(Date.now() + VALIDADE_PIX_MS),
+    });
   }
 
   estornar(transacaoId: string): Promise<void> {

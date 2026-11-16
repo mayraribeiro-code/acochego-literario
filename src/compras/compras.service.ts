@@ -8,7 +8,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, StatusCompra, TipoUsuario } from '@prisma/client';
+import {
+  MetodoPagamento,
+  Prisma,
+  StatusCompra,
+  TipoUsuario,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Paginacao, skipTake } from '../common/paginacao';
 import { GatewayPagamento } from '../pagamentos/gateway-pagamento';
@@ -19,9 +24,10 @@ const incluirLivro = {
   livro: { include: { autor: true, genero: true } },
 } as const;
 
-// Uma compra "iniciada" há mais tempo que isso é considerada abandonada
-// (ex.: a API caiu no meio do pagamento) e pode ser tentada de novo.
-const PRAZO_COMPRA_INICIADA_MS = 5 * 60 * 1000;
+// Quanto tempo uma compra com cartão fica "iniciada" antes de ser considerada
+// abandonada (ex.: a API caiu no meio do pagamento) e poder ser tentada de
+// novo. O Pix usa a validade da cobrança, definida pelo gateway.
+const PRAZO_CARTAO_MS = 5 * 60 * 1000;
 
 @Injectable()
 export class ComprasService {
@@ -32,10 +38,17 @@ export class ComprasService {
     private gateway: GatewayPagamento,
   ) {}
 
-  // 1. reserva a compra como "iniciada" (impede dois pagamentos ao mesmo tempo);
-  // 2. cobra no gateway (livro gratuito pula essa etapa);
-  // 3. marca "confirmada" ou "falha" conforme a resposta.
-  async comprar(usuarioId: string, livroId: string, cartao?: CartaoDto) {
+  // Cartão: reserva a compra como "iniciada", cobra e marca "confirmada" ou
+  // "falha" na mesma requisição.
+  // Pix: reserva, gera o código e devolve a compra ainda "iniciada"; ela vira
+  // "confirmada" quando o pagamento chega (confirmarPix).
+  // Livro gratuito: confirma direto, sem pagamento.
+  async comprar(
+    usuarioId: string,
+    livroId: string,
+    metodo: 'cartao' | 'pix' = 'cartao',
+    cartao?: CartaoDto,
+  ) {
     const livro = await this.prismaService.livro.findUnique({
       where: { id: livroId },
     });
@@ -50,33 +63,50 @@ export class ComprasService {
       );
     }
 
-    const gratuito = livro.precoCentavos === 0;
-    if (!gratuito) {
-      if (!cartao) {
-        throw new BadRequestException('Informe os dados do cartão');
-      }
-      if (cartaoVencido(cartao)) {
-        throw new BadRequestException('O cartão está vencido');
-      }
+    if (livro.precoCentavos === 0) {
+      const compra = await this.reservar(
+        usuarioId,
+        livroId,
+        0,
+        PRAZO_CARTAO_MS,
+      );
+      return this.finalizar(compra.id, {
+        status: StatusCompra.confirmada,
+        metodo: MetodoPagamento.gratuito,
+        expiraEm: null,
+      });
     }
 
-    const compra = await this.reservar(usuarioId, livroId, livro.precoCentavos);
-
-    if (gratuito) {
-      return this.finalizar(compra.id, { status: StatusCompra.confirmada });
+    if (metodo === 'pix') {
+      return this.iniciarPix(usuarioId, livro);
     }
+
+    if (!cartao) {
+      throw new BadRequestException('Informe os dados do cartão');
+    }
+    if (cartaoVencido(cartao)) {
+      throw new BadRequestException('O cartão está vencido');
+    }
+
+    const compra = await this.reservar(
+      usuarioId,
+      livroId,
+      livro.precoCentavos,
+      PRAZO_CARTAO_MS,
+    );
 
     let resultado: Awaited<ReturnType<GatewayPagamento['cobrar']>>;
     try {
       resultado = await this.gateway.cobrar({
         valorCentavos: livro.precoCentavos,
         descricao: `Livro: ${livro.titulo}`,
-        cartao: cartao!,
+        cartao,
       });
     } catch (erro) {
       this.logger.error(`Falha ao falar com o gateway: ${String(erro)}`);
       await this.finalizar(compra.id, {
         status: StatusCompra.falha,
+        metodo: MetodoPagamento.cartao,
         motivoFalha: 'Serviço de pagamento indisponível',
       });
       throw new BadGatewayException(
@@ -87,6 +117,8 @@ export class ComprasService {
     if (!resultado.aprovado) {
       await this.finalizar(compra.id, {
         status: StatusCompra.falha,
+        metodo: MetodoPagamento.cartao,
+        cartaoFinal: cartao.numero.slice(-4),
         motivoFalha: resultado.motivo,
       });
       throw new HttpException(resultado.motivo, HttpStatus.PAYMENT_REQUIRED);
@@ -94,31 +126,146 @@ export class ComprasService {
 
     return this.finalizar(compra.id, {
       status: StatusCompra.confirmada,
+      metodo: MetodoPagamento.cartao,
       transacaoId: resultado.transacaoId,
-      cartaoFinal: cartao!.numero.slice(-4),
+      cartaoFinal: cartao.numero.slice(-4),
+      expiraEm: null,
     });
   }
 
+  private async iniciarPix(
+    usuarioId: string,
+    livro: { id: string; titulo: string; precoCentavos: number },
+  ) {
+    // A reserva vale o tempo de gerar o código; depois passa a valer a
+    // validade do Pix devolvida pelo gateway.
+    const compra = await this.reservar(
+      usuarioId,
+      livro.id,
+      livro.precoCentavos,
+      PRAZO_CARTAO_MS,
+    );
+
+    let pix: Awaited<ReturnType<GatewayPagamento['criarPix']>>;
+    try {
+      pix = await this.gateway.criarPix({
+        valorCentavos: livro.precoCentavos,
+        descricao: `Livro: ${livro.titulo}`,
+        referencia: compra.id,
+      });
+    } catch (erro) {
+      this.logger.error(`Falha ao gerar Pix: ${String(erro)}`);
+      await this.finalizar(compra.id, {
+        status: StatusCompra.falha,
+        metodo: MetodoPagamento.pix,
+        motivoFalha: 'Serviço de pagamento indisponível',
+      });
+      throw new BadGatewayException(
+        'Não foi possível gerar o Pix agora. Tente novamente',
+      );
+    }
+
+    return this.finalizar(compra.id, {
+      metodo: MetodoPagamento.pix,
+      transacaoId: pix.transacaoId,
+      pixCopiaECola: pix.copiaECola,
+      expiraEm: pix.expiraEm,
+    });
+  }
+
+  // Chamado quando o pagamento do Pix chega: num serviço real, pelo webhook
+  // do gateway; aqui, pelo botão "Simular pagamento". Só confirma se ainda for
+  // aquele mesmo Pix (mesma transação) e se ele não tiver vencido.
+  async confirmarPix(compraId: string, transacaoId: string) {
+    const { count } = await this.prismaService.compra.updateMany({
+      where: {
+        id: compraId,
+        transacaoId,
+        metodo: MetodoPagamento.pix,
+        status: StatusCompra.iniciada,
+        expiraEm: { gt: new Date() },
+      },
+      data: { status: StatusCompra.confirmada, expiraEm: null },
+    });
+    return count > 0;
+  }
+
+  // Situação de uma compra do próprio usuário, para o site acompanhar o Pix.
+  // Um Pix vencido passa a "falha" aqui mesmo.
+  async situacao(usuarioId: string, compraId: string) {
+    const compra = await this.prismaService.compra.findFirst({
+      where: { id: compraId, usuarioId },
+    });
+    if (!compra) {
+      throw new NotFoundException('Compra não encontrada');
+    }
+
+    if (
+      compra.status === StatusCompra.iniciada &&
+      compra.metodo === MetodoPagamento.pix &&
+      compra.expiraEm &&
+      compra.expiraEm <= new Date()
+    ) {
+      await this.prismaService.compra.updateMany({
+        where: { id: compraId, status: StatusCompra.iniciada },
+        data: { status: StatusCompra.falha, motivoFalha: 'Pix expirado' },
+      });
+    }
+
+    return this.prismaService.compra.findUniqueOrThrow({
+      where: { id: compraId },
+      include: incluirLivro,
+    });
+  }
+
+  // Só no ambiente de teste: faz o papel do banco e "paga" o Pix.
+  async simularPagamentoPix(usuarioId: string, compraId: string) {
+    if (!this.gateway.permiteSimularPix) {
+      throw new NotFoundException('Simulação de pagamento indisponível');
+    }
+    const compra = await this.situacao(usuarioId, compraId);
+    if (compra.metodo !== MetodoPagamento.pix || !compra.transacaoId) {
+      throw new BadRequestException('Esta compra não é um pagamento Pix');
+    }
+    if (compra.status === StatusCompra.confirmada) {
+      return compra;
+    }
+    if (!(await this.confirmarPix(compraId, compra.transacaoId))) {
+      throw new BadRequestException(
+        compra.motivoFalha === 'Pix expirado'
+          ? 'Este Pix expirou. Gere um novo para pagar'
+          : 'Este Pix não está mais aguardando pagamento',
+      );
+    }
+    return this.situacao(usuarioId, compraId);
+  }
+
   // Cria a compra como "iniciada" ou reaproveita uma que falhou, foi
-  // cancelada ou ficou abandonada. A troca de status é feita com uma condição
+  // cancelada, venceu ou é um Pix ainda não pago (o cliente pode desistir do
+  // Pix e pagar de outro jeito). A troca de status é feita com uma condição
   // no próprio UPDATE, então duas requisições simultâneas não pagam duas vezes.
   private async reservar(
     usuarioId: string,
     livroId: string,
     valorCentavos: number,
+    prazoMs: number,
   ) {
     const existente = await this.prismaService.compra.findUnique({
       where: { usuarioId_livroId: { usuarioId, livroId } },
     });
 
+    const agora = new Date();
     const novaTentativa = {
       status: StatusCompra.iniciada,
       valorCentavos,
+      metodo: null,
       transacaoId: null,
       cartaoFinal: null,
       motivoFalha: null,
+      pixCopiaECola: null,
       canceladaEm: null,
-      createdAt: new Date(),
+      expiraEm: new Date(agora.getTime() + prazoMs),
+      createdAt: agora,
     };
 
     if (!existente) {
@@ -149,9 +296,13 @@ export class ComprasService {
         id: existente.id,
         OR: [
           { status: { in: [StatusCompra.falha, StatusCompra.cancelada] } },
+          { status: StatusCompra.iniciada, metodo: MetodoPagamento.pix },
+          { status: StatusCompra.iniciada, expiraEm: { lt: agora } },
+          // Compras de antes do campo expiraEm existir.
           {
             status: StatusCompra.iniciada,
-            updatedAt: { lt: new Date(Date.now() - PRAZO_COMPRA_INICIADA_MS) },
+            expiraEm: null,
+            updatedAt: { lt: new Date(agora.getTime() - PRAZO_CARTAO_MS) },
           },
         ],
       },

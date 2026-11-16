@@ -45,6 +45,12 @@ model Usuario {
   @@map("usuarios")
 }
 
+enum MetodoPagamento {
+  cartao
+  pix
+  gratuito
+}
+
 enum StatusCompra {
   iniciada
   confirmada
@@ -90,6 +96,9 @@ model Livro {
   capaCorInicio   String   @map("capa_cor_inicio")
   capaCorFim      String   @map("capa_cor_fim")
   capaCorTexto    String   @map("capa_cor_texto")
+  // Imagem de capa enviada pelo admin (nome do arquivo em STORAGE_DIR/capas).
+  // Sem imagem, o site desenha a capa com as três cores acima.
+  capaArquivo     String?  @map("capa_arquivo")
   avaliacao       Float    @default(0)
   totalAvaliacoes Int      @default(0) @map("total_avaliacoes")
   autorId         String   @map("autor_id")
@@ -115,19 +124,25 @@ model Livro {
 // confirmada -> cancelada (pelo admin, com estorno). Depois de falha ou
 // cancelamento, comprar de novo reaproveita a mesma linha.
 model Compra {
-  id            String       @id @default(uuid())
-  usuarioId     String       @map("usuario_id")
-  livroId       String       @map("livro_id")
-  valorCentavos Int          @map("valor_centavos")
-  status        StatusCompra @default(iniciada)
+  id            String           @id @default(uuid())
+  usuarioId     String           @map("usuario_id")
+  livroId       String           @map("livro_id")
+  valorCentavos Int              @map("valor_centavos")
+  status        StatusCompra     @default(iniciada)
+  metodo        MetodoPagamento?
+  // Até quando uma compra "iniciada" espera o pagamento (o Pix vale 15 min).
+  // Depois disso ela pode ser tentada de novo.
+  expiraEm      DateTime?        @map("expira_em")
+  // "Copia e cola" do Pix (o QR code é gerado a partir dele).
+  pixCopiaECola String?          @map("pix_copia_e_cola")
   // Dados do pagamento: o id da transação no gateway e só os 4 últimos
   // dígitos do cartão. O número completo nunca é guardado.
-  transacaoId   String?      @map("transacao_id")
-  cartaoFinal   String?      @map("cartao_final")
-  motivoFalha   String?      @map("motivo_falha")
-  canceladaEm   DateTime?    @map("cancelada_em")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  transacaoId   String?          @map("transacao_id")
+  cartaoFinal   String?          @map("cartao_final")
+  motivoFalha   String?          @map("motivo_falha")
+  canceladaEm   DateTime?        @map("cancelada_em")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   livro   Livro   @relation(fields: [livroId], references: [id])

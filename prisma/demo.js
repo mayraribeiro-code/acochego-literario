@@ -16,6 +16,8 @@ const { join, resolve } = require('path');
 const prisma = new PrismaClient();
 const PASTA_ARQUIVOS = resolve(process.env.STORAGE_DIR || './storage');
 const PASTA_LIVROS = join(__dirname, 'demo', 'livros');
+const PASTA_CAPAS_DEMO = join(__dirname, 'demo', 'capas');
+const PASTA_CAPAS = join(PASTA_ARQUIVOS, 'capas');
 
 const SENHA_DEMO = 'demo1234';
 const DOMINIO = '@demo.com';
@@ -25,6 +27,7 @@ const DOMINIO = '@demo.com';
 const ARQUIVOS = [
   {
     titulo: 'Dom Casmurro',
+    capa: 'dom-casmurro.jpg',
     formato: 'PDF + EPUB',
     arquivos: [
       { formato: 'PDF', nome: 'dom-casmurro.pdf' },
@@ -33,6 +36,7 @@ const ARQUIVOS = [
   },
   {
     titulo: 'Memórias Póstumas de Brás Cubas',
+    capa: 'memorias-postumas-de-bras-cubas.jpg',
     formato: 'PDF + EPUB',
     arquivos: [
       { formato: 'PDF', nome: 'memorias-postumas-de-bras-cubas.pdf' },
@@ -41,6 +45,7 @@ const ARQUIVOS = [
   },
   {
     titulo: 'O Cortiço',
+    capa: 'o-cortico.jpg',
     formato: 'PDF + EPUB',
     arquivos: [
       { formato: 'PDF', nome: 'o-cortico.pdf' },
@@ -81,6 +86,13 @@ const COMPRAS = [
   ['felipe', 'Memórias Póstumas de Brás Cubas', 2, 'confirmada'],
   ['felipe', 'Dom Casmurro', 1, 'confirmada'],
 ];
+
+// Compras pagas com Pix (as demais, com cartão).
+const PAGOS_COM_PIX = new Set([
+  'elisa|Gabriela, Cravo e Canela',
+  'carla|Vidas Secas',
+  'felipe|Memórias Póstumas de Brás Cubas',
+]);
 
 // [cliente, livro, nota, comentário]. Só de compras confirmadas.
 const AVALIACOES = [
@@ -127,13 +139,21 @@ async function limpar() {
 // STORAGE_DIR e registro no banco; reenviar substitui o anterior.
 async function cadastrarArquivos() {
   await mkdir(PASTA_ARQUIVOS, { recursive: true });
+  await mkdir(PASTA_CAPAS, { recursive: true });
 
   for (const item of ARQUIVOS) {
     const livro = await livroPorTitulo(item.titulo);
+
+    // Capa: folha de rosto da edição original, tirada do EPUB do Gutenberg.
+    const capa = `${randomUUID()}.jpg`;
+    await copyFile(join(PASTA_CAPAS_DEMO, item.capa), join(PASTA_CAPAS, capa));
     await prisma.livro.update({
       where: { id: livro.id },
-      data: { formato: item.formato },
+      data: { formato: item.formato, capaArquivo: capa },
     });
+    if (livro.capaArquivo) {
+      await rm(join(PASTA_CAPAS, livro.capaArquivo), { force: true });
+    }
 
     for (const { formato, nome } of item.arquivos) {
       const origem = join(PASTA_LIVROS, nome);
@@ -155,7 +175,7 @@ async function cadastrarArquivos() {
       }
     }
   }
-  console.log('Arquivos dos livros em domínio público cadastrados.');
+  console.log('Arquivos e capas dos livros em domínio público cadastrados.');
 }
 
 async function criarClientes() {
@@ -184,9 +204,14 @@ async function criarCompras(clientes) {
         valorCentavos: livro.precoCentavos,
         status,
         createdAt: quando,
-        ...(status !== 'falha' && {
-          transacaoId: `sim_demo_${randomUUID()}`,
-          cartaoFinal: '4242',
+        metodo: PAGOS_COM_PIX.has(`${cliente}|${titulo}`) ? 'pix' : 'cartao',
+        ...(status !== 'falha' &&
+          !PAGOS_COM_PIX.has(`${cliente}|${titulo}`) && {
+            transacaoId: `sim_demo_${randomUUID()}`,
+            cartaoFinal: '4242',
+          }),
+        ...(PAGOS_COM_PIX.has(`${cliente}|${titulo}`) && {
+          transacaoId: `sim_pix_demo_${randomUUID()}`,
         }),
         ...(status === 'falha' && {
           cartaoFinal: '0002',

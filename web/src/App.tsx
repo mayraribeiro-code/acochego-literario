@@ -21,6 +21,8 @@ import { BookDetailView } from "./views/BookDetailView";
 import { LibraryView } from "./views/LibraryView";
 import { AdminView } from "./views/AdminView";
 import { AccountView } from "./views/AccountView";
+import { PrivacyView } from "./views/PrivacyView";
+import { Footer } from "./components/Footer";
 
 // O leitor (pdf.js e epub.js) só é baixado quando alguém abre um livro.
 const ReaderView = lazy(() =>
@@ -352,7 +354,11 @@ export default function App() {
           restricted(currentUser?.role === "admin", () => (
             <AdminView onCatalogChange={loadCatalog} onMessage={setToast} />
           ))}
+
+        {view === "privacy" && <PrivacyView />}
       </main>
+
+      <Footer onNavigate={navigate} />
 
       {authModal.open && (
         <AuthModal

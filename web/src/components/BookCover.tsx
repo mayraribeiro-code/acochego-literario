@@ -1,4 +1,5 @@
 import type { Book } from "../types";
+import { CoverImage } from "./CoverImage";
 
 export function BookCover({
   book,
@@ -44,6 +45,7 @@ export function BookCover({
           </p>
         </div>
       </div>
+      <CoverImage book={book} />
     </div>
   );
 }

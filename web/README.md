@@ -26,6 +26,7 @@ Cada tela tem um endereço, então o F5 e os botões voltar/avançar do navegado
 | `/biblioteca` | Minha Biblioteca (cliente) |
 | `/conta` | Minha conta |
 | `/admin` | painel administrativo |
+| `/privacidade` | Política de Privacidade |
 
 O leitor abre por cima da tela do livro ou da biblioteca; o voltar do navegador o fecha. As rotas estão em `src/lib/routes.ts`, sem biblioteca de rotas.
 

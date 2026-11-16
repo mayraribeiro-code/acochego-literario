@@ -25,6 +25,7 @@ interface LivroResponse {
   capaCorInicio: string;
   capaCorFim: string;
   capaCorTexto: string;
+  capaArquivo: string | null;
   avaliacao: number;
   totalAvaliacoes: number;
   autor: { nome: string };
@@ -42,6 +43,7 @@ interface AdminCompraResponse {
   id: string;
   valorCentavos: number;
   status: AdminPurchase["status"];
+  metodo: AdminPurchase["method"];
   cartaoFinal: string | null;
   motivoFalha: string | null;
   createdAt: string;
@@ -76,6 +78,11 @@ function toBook(livro: LivroResponse): Book {
     coverFrom: livro.capaCorInicio,
     coverTo: livro.capaCorFim,
     coverText: livro.capaCorTexto,
+    // O nome do arquivo muda a cada troca de capa, então serve de versão:
+    // o navegador pode guardar a imagem em cache sem mostrar a antiga.
+    coverUrl: livro.capaArquivo
+      ? `${API_URL}/livros/${livro.id}/capa?v=${encodeURIComponent(livro.capaArquivo)}`
+      : null,
     available: livro.disponivel,
     format: livro.formato,
     active: livro.ativo,
@@ -128,7 +135,7 @@ function translateError(status: number, message: unknown) {
   if (message === "User is not active") return "Esta conta está desativada.";
   if (message === "credentials are not valid") return "E-mail ou senha inválidos.";
   if (status === 401) return "Sua sessão expirou. Entre novamente.";
-  if (status === 413) return "O arquivo é grande demais (máximo de 50 MB).";
+  if (status === 413) return "O arquivo é grande demais (máximo de 50 MB para livros e 2 MB para capas).";
   // Os módulos de livros, compras e leitura já respondem em português.
   const ownMessage =
     typeof message === "string" &&
@@ -281,6 +288,60 @@ export async function buyBook(bookId: string, card?: CardInput) {
     }),
   });
   return toBook(compra.livro);
+}
+
+// ── Pix (simulado) ────────────────────────────────────────────────────────────
+
+export interface PixPurchase {
+  id: string;
+  status: "iniciada" | "confirmada" | "cancelada" | "falha";
+  // Texto do "Pix copia e cola"; o QR code é desenhado a partir dele.
+  code: string | null;
+  expiresAt: Date | null;
+  failureReason: string | null;
+  book: Book;
+}
+
+interface CompraPixResponse extends CompraResponse {
+  status: PixPurchase["status"];
+  pixCopiaECola: string | null;
+  expiraEm: string | null;
+  motivoFalha: string | null;
+}
+
+function toPixPurchase(c: CompraPixResponse): PixPurchase {
+  return {
+    id: c.id,
+    status: c.status,
+    code: c.pixCopiaECola,
+    expiresAt: c.expiraEm ? new Date(c.expiraEm) : null,
+    failureReason: c.motivoFalha,
+    book: toBook(c.livro),
+  };
+}
+
+// Gera a cobrança Pix; a compra fica "iniciada" até o pagamento chegar.
+export async function startPixPurchase(bookId: string) {
+  const c = await request<CompraPixResponse>("/compras", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ livroId: bookId, metodo: "pix" }),
+  });
+  return toPixPurchase(c);
+}
+
+// Consultada de tempos em tempos enquanto o QR code está na tela.
+export async function fetchPurchase(purchaseId: string) {
+  return toPixPurchase(await request<CompraPixResponse>(`/compras/${purchaseId}`, { auth: true }));
+}
+
+// Só no ambiente de teste: faz o papel do app do banco e paga o Pix.
+export async function simulatePixPayment(purchaseId: string) {
+  const c = await request<CompraPixResponse>(`/compras/${purchaseId}/pix/simular-pagamento`, {
+    method: "POST",
+    auth: true,
+  });
+  return toPixPurchase(c);
 }
 
 // ── Conta do usuário ──────────────────────────────────────────────────────────
@@ -513,6 +574,27 @@ export async function deleteBookFile(bookId: string, format: BookFileFormat) {
   await send(`/admin/livros/${bookId}/arquivos/${format}`, { method: "DELETE", auth: true });
 }
 
+// Capa: JPG, PNG ou WebP até 2 MB. Devolve o livro com a capa nova.
+export async function uploadBookCover(bookId: string, file: File) {
+  const form = new FormData();
+  form.append("capa", file);
+  const livro = await request<LivroResponse>(`/admin/livros/${bookId}/capa`, {
+    method: "POST",
+    auth: true,
+    body: form,
+  });
+  return toBook(livro);
+}
+
+// Volta a usar a capa desenhada com as cores do livro.
+export async function removeBookCover(bookId: string) {
+  const livro = await request<LivroResponse>(`/admin/livros/${bookId}/capa`, {
+    method: "DELETE",
+    auth: true,
+  });
+  return toBook(livro);
+}
+
 export async function setBookActive(bookId: string, active: boolean) {
   const livro = await request<LivroResponse>(`/admin/livros/${bookId}`, {
     method: "PATCH",
@@ -562,6 +644,7 @@ function toAdminPurchase(c: AdminCompraResponse): AdminPurchase {
     date: new Date(c.createdAt).toLocaleDateString("pt-BR"),
     value: c.valorCentavos / 100,
     status: c.status,
+    method: c.metodo,
     cardLast4: c.cartaoFinal,
     failureReason: c.motivoFalha,
   };

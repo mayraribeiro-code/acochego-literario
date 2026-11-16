@@ -1,4 +1,11 @@
-export type View = "home" | "catalog" | "bookDetail" | "library" | "admin" | "account";
+export type View =
+  | "home"
+  | "catalog"
+  | "bookDetail"
+  | "library"
+  | "admin"
+  | "account"
+  | "privacy";
 export type AuthMode = "login" | "register";
 
 export interface Book {
@@ -14,6 +21,8 @@ export interface Book {
   coverFrom: string;
   coverTo: string;
   coverText: string;
+  // Imagem de capa enviada pelo admin; sem ela, a capa é desenhada com as cores.
+  coverUrl: string | null;
   available: boolean;
   format: string;
   active: boolean;
@@ -48,6 +57,7 @@ export interface AdminPurchase {
   date: string;
   value: number;
   status: "iniciada" | "confirmada" | "cancelada" | "falha";
+  method: "cartao" | "pix" | "gratuito" | null;
   cardLast4: string | null;
   failureReason: string | null;
 }

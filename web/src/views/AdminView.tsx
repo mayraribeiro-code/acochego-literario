@@ -16,10 +16,16 @@ import { BookFormModal } from "../components/BookFormModal";
 
 const STATUS: Record<AdminPurchase["status"], { label: string; cls: string }> = {
   confirmada: { label: "Confirmada", cls: "bg-emerald-50 text-emerald-700" },
-  iniciada: { label: "Processando", cls: "bg-amber-50 text-amber-700" },
+  iniciada: { label: "Aguardando pagamento", cls: "bg-amber-50 text-amber-700" },
   falha: { label: "Pagamento recusado", cls: "bg-red-50 text-red-700" },
   cancelada: { label: "Cancelada", cls: "bg-stone-100 text-stone-600" },
 };
+
+function paymentLabel(row: AdminPurchase) {
+  if (row.method === "pix") return " · Pix";
+  if (row.method === "gratuito") return " · gratuito";
+  return row.cardLast4 ? ` · cartão final ${row.cardLast4}` : "";
+}
 
 export function AdminView({
   onCatalogChange,
@@ -329,7 +335,7 @@ export function AdminView({
                     </p>
                     <p className="text-xs text-[#7A7264]">
                       {row.book} · {row.date}
-                      {row.cardLast4 && ` · cartão final ${row.cardLast4}`}
+                      {paymentLabel(row)}
                     </p>
                     {row.status === "falha" && row.failureReason && (
                       <p className="text-xs text-red-600 mt-0.5">{row.failureReason}</p>
@@ -403,6 +409,10 @@ export function AdminView({
           genres={genres}
           onClose={() => setEditing(undefined)}
           onSaved={handleSaved}
+          onCoverChange={(updated) => {
+            setBooks((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+            onCatalogChange();
+          }}
         />
       )}
     </div>

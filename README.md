@@ -55,8 +55,11 @@ Cria clientes (`ana@demo.com`, senha `demo1234`), compras, avaliações e os arq
 | GET | `/livros` | público | catálogo (só livros ativos) |
 | GET | `/livros/generos` | público | gêneros que têm livros no catálogo |
 | GET | `/livros/:id` | público | detalhe de um livro ativo |
-| POST | `/compras` | cliente | compra e paga um livro: `{ "livroId": "...", "cartao": { ... } }` (veja "Pagamento" abaixo) |
-| GET | `/compras` | logado | compras do próprio usuário (a "Minha Biblioteca") |
+| GET | `/livros/:id/capa` | público | imagem de capa do livro (404 se ele usa a capa desenhada com as cores) |
+| POST | `/compras` | cliente | compra um livro com cartão `{ "livroId": "...", "cartao": { ... } }` ou Pix `{ "livroId": "...", "metodo": "pix" }` (veja "Pagamento" abaixo) |
+| GET | `/compras` | logado | compras confirmadas do próprio usuário (a "Minha Biblioteca") |
+| GET | `/compras/:id` | logado | situação de uma compra própria (o site consulta enquanto espera o Pix) |
+| POST | `/compras/:id/pix/simular-pagamento` | cliente | só com o pagamento simulado: "paga" o Pix |
 | GET | `/admin/livros` | admin | todos os livros, inclusive inativos |
 | POST | `/admin/livros` | admin | cadastra livro (autor e gênero pelo nome; são criados se não existirem) |
 | PATCH | `/admin/livros/:id` | admin | edita livro; `{ "ativo": false }` tira do catálogo |
@@ -66,6 +69,8 @@ Cria clientes (`ana@demo.com`, senha `demo1234`), compras, avaliações e os arq
 | GET | `/admin/livros/:id/arquivos` | admin | arquivos digitais (PDF/EPUB) do livro |
 | POST | `/admin/livros/:id/arquivos` | admin | envia arquivo (`multipart/form-data`, campo `arquivo`, até 50 MB) |
 | DELETE | `/admin/livros/:id/arquivos/:formato` | admin | remove o arquivo `PDF` ou `EPUB` |
+| POST | `/admin/livros/:id/capa` | admin | envia a imagem de capa (`multipart/form-data`, campo `capa`, JPG/PNG/WebP até 2 MB); devolve o livro |
+| DELETE | `/admin/livros/:id/capa` | admin | remove a imagem e volta à capa desenhada com as cores |
 | GET | `/leitura/progresso` | logado | leitura mais recente de cada livro da biblioteca (para a "Minha Biblioteca") |
 | GET | `/leitura/:livroId` | quem comprou | formatos disponíveis para leitura |
 | GET | `/leitura/:livroId/:formato` | quem comprou | conteúdo do arquivo, para o leitor do site |
@@ -94,7 +99,10 @@ Pagamento:
 - o pagamento é **simulado** (`src/pagamentos/gateway-simulado.ts`): nada é cobrado de verdade;
 - envie o cartão em `cartao`: `{ "numero": "4242424242424242", "nomeTitular": "Ana", "mesValidade": 12, "anoValidade": 2030, "cvv": "123" }`;
 - cartões de teste: `4242 4242 4242 4242` aprova, `4000 0000 0000 0002` é recusado e `4000 0000 0000 9995` simula saldo insuficiente; números com dígito verificador inválido também são recusados;
-- livros com preço 0 não pedem cartão;
+- **Pix:** `{ "livroId": "...", "metodo": "pix" }` devolve a compra como `iniciada`, com `pixCopiaECola` (o código no formato oficial do Banco Central, de onde o site gera o QR code) e `expiraEm` (15 minutos). A compra vira `confirmada` quando o pagamento chega; aqui, pelo `POST /compras/:id/pix/simular-pagamento`. Um Pix vencido vira `falha` ("Pix expirado"), e o cliente pode gerar outro ou pagar com cartão;
+- a chave Pix de teste usa o domínio reservado `.invalid`, que não existe como chave de verdade: escaneado num app de banco, o código é recusado e nada é cobrado;
+- num serviço real, a confirmação do Pix chega por webhook e chama `ComprasService.confirmarPix`;
+- livros com preço 0 não pedem pagamento;
 - a API guarda só os 4 últimos dígitos do cartão e o id da transação;
 - para usar um serviço real (Mercado Pago, Stripe...), escreva outra implementação de `GatewayPagamento` e troque em `src/pagamentos/pagamentos.module.ts`. Num serviço real o site deve enviar o cartão direto para o serviço e a API receber só um token, para o número do cartão não passar pelo servidor.
 
@@ -107,6 +115,11 @@ Avaliações:
 - cada usuário tem uma avaliação por livro; enviar de novo substitui a anterior;
 - `avaliacao` (média com uma casa decimal) e `totalAvaliacoes` do livro são recalculados pela API a cada mudança e não podem ser editados pelo admin;
 - as notas do seed eram fictícias e foram zeradas: agora só contam avaliações reais.
+
+Capas:
+- o admin pode enviar uma imagem de capa; sem ela, o site desenha a capa com as três cores do livro;
+- o tipo é detectado pelo conteúdo (JPG, PNG ou WebP); as imagens ficam em `STORAGE_DIR/capas` e são públicas, ao contrário dos arquivos dos livros;
+- trocar a capa gera um nome de arquivo novo, usado na URL; assim o navegador pode guardar a imagem em cache sem mostrar a antiga.
 
 Arquivos dos livros:
 - ficam na pasta `STORAGE_DIR` (padrão `./storage`, fora do git), com nome gerado pela API;

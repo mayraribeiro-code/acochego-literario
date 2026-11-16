@@ -66,9 +66,11 @@ Situação da Ana no início: tem **Dom Casmurro** (parou na página 34 do PDF) 
 ### 4. Compra com pagamento (2 min)
 - Abra **Memórias Póstumas de Brás Cubas** e clique em **Comprar livro**.
 - Use primeiro o cartão `4000 0000 0000 0002`: aparece "Pagamento recusado pelo banco emissor".
-- Troque para `4242 4242 4242 4242` e pague: o livro entra na biblioteca.
+- Troque para a aba **Pix** e clique em **Gerar Pix**: aparecem o QR code, o código copia e cola e a contagem de 15 minutos.
+- Clique em **Simular pagamento** (faz o papel do app do banco): o site percebe sozinho e o livro entra na biblioteca.
+- Se preferir mostrar o cartão aprovado, use `4242 4242 4242 4242` em outro livro.
 - **Ler agora**: abre o EPUB.
-- Ponto para falar: o pagamento é simulado, mas o fluxo é o de um gateway real (compra iniciada → aprovada ou recusada). Trocar por Mercado Pago ou Stripe mexe em uma peça só (`src/pagamentos`). A API guarda apenas os 4 últimos dígitos do cartão.
+- Ponto para falar: o pagamento é simulado, mas o fluxo é o de um gateway real (compra iniciada → aprovada ou recusada). Trocar por Mercado Pago ou Stripe mexe em uma peça só (`src/pagamentos`). A API guarda apenas os 4 últimos dígitos do cartão. O código Pix segue o padrão oficial do Banco Central, mas com uma chave de teste que não existe: escaneado num banco de verdade, é recusado.
 
 ### 5. Avaliar (1 min)
 - Ainda em Memórias Póstumas, desça até **Avaliações dos leitores**, dê 5 estrelas e escreva um comentário.
@@ -82,15 +84,20 @@ Situação da Ana no início: tem **Dom Casmurro** (parou na página 34 do PDF) 
 ### 7. Painel do admin (2 min)
 - **Sair** e entrar como admin. Abra **Admin**.
 - Resumo: livros ativos, compras, clientes e receita.
-- Aba **Livros**: editar um livro, desativar/ativar, enviar arquivo PDF/EPUB.
+- Aba **Livros**: editar um livro, desativar/ativar, enviar arquivo PDF/EPUB e **imagem de capa** (sem imagem, a capa é desenhada com as cores do livro).
+- Aba **Compras**: cada compra mostra a forma de pagamento (cartão final 4242 ou Pix).
 - Aba **Compras**: a compra da Ana aparece no topo; mostre a do Bruno com "Pagamento recusado" e a do Diego "Cancelada".
 - Em uma compra confirmada, **Cancelar compra** → **Confirmar estorno**: a receita cai, o livro sai da biblioteca do cliente e a avaliação dele é apagada.
 - Na página de um livro, o admin pode remover avaliações (ícone de lixeira).
 
-### 8. Encerramento técnico (1 min, opcional)
+### 8. Privacidade (30 s)
+- No rodapé, **Política de Privacidade**: o que o site guarda (senha só cifrada, só os 4 últimos dígitos do cartão), quem vê o quê e os direitos da LGPD.
+- No cadastro há o link para ela.
+
+### 9. Encerramento técnico (1 min, opcional)
 - Stack: NestJS + Prisma + SQLite na API; React + Vite + Tailwind no site.
 - Segurança: senhas com bcrypt, JWT renovado automaticamente, arquivos sem link público, conta desativada perde o acesso na hora.
-- Qualidade: 29 testes automatizados (`npm run test:e2e`) cobrindo login, conta, compras, pagamento, leitura e avaliações.
+- Qualidade: 37 testes automatizados (`npm run test:e2e`) cobrindo login, conta, compras, pagamento com cartão e Pix, capas, leitura e avaliações.
 
 ## Se algo der errado
 

@@ -164,6 +164,22 @@ export function AuthModal({
             {mode === "login" ? "Entrar" : "Criar conta"}
           </button>
 
+          {mode === "register" && (
+            <p className="text-xs text-[#7A7264] text-center mt-3 leading-relaxed">
+              Ao criar a conta, você declara ter lido a{" "}
+              {/* Abre em outra aba para não perder o que já foi digitado. */}
+              <a
+                href="/privacidade"
+                target="_blank"
+                rel="noopener"
+                className="text-[#315C4C] font-semibold underline underline-offset-2 hover:text-[#1F3D33]"
+              >
+                Política de Privacidade
+              </a>
+              .
+            </p>
+          )}
+
           <p className="text-center text-sm text-[#7A7264] mt-4">
             {mode === "login" ? (
               <>

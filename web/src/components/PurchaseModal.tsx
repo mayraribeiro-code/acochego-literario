@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { X, Check, CreditCard, Lock } from "lucide-react";
+import { X, Check, CreditCard, Lock, QrCode } from "lucide-react";
 import type { Book } from "../types";
 import { fmt } from "../lib/format";
 import { ApiError, buyBook, type CardInput } from "../lib/api";
 import { BookCover } from "./BookCover";
+import { PixPayment } from "./PixPayment";
 
 // "4242424242424242" -> "4242 4242 4242 4242"
 function groupDigits(digits: string) {
@@ -44,6 +45,14 @@ export function PurchaseModal({
   const [holder, setHolder] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
+  const [method, setMethod] = useState<"card" | "pix">("card");
+  // Enquanto o Pix está sendo gerado, o modal não fecha nem troca de aba.
+  const [pixBusy, setPixBusy] = useState(false);
+
+  function handlePixPaid(purchased: Book) {
+    setDone(true);
+    setTimeout(() => onConfirm(purchased), 1800);
+  }
 
   const free = book.price === 0;
 
@@ -60,6 +69,8 @@ export function PurchaseModal({
 
   async function handlePurchase(e: React.FormEvent) {
     e.preventDefault();
+    // No Pix quem paga é o painel do Pix; Enter no formulário não faz nada.
+    if (!free && method === "pix") return;
     setError("");
     let card: CardInput | undefined;
     if (!free) {
@@ -86,13 +97,13 @@ export function PurchaseModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/45 backdrop-blur-sm"
-        onClick={!loading && !done ? onClose : undefined}
+        onClick={!loading && !done && !pixBusy ? onClose : undefined}
       />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto p-6">
         {!done && (
           <button
             onClick={onClose}
-            disabled={loading}
+            disabled={loading || pixBusy}
             aria-label="Fechar"
             className="absolute top-4 right-4 w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500 transition-colors"
           >
@@ -124,7 +135,11 @@ export function PurchaseModal({
               {free ? "Adicionar à biblioteca" : "Pagamento"}
             </h3>
             <p className="text-sm text-[#7A7264] mb-5">
-              {free ? "Este livro é gratuito." : "Revise o livro e informe o cartão."}
+              {free
+                ? "Este livro é gratuito."
+                : method === "pix"
+                  ? "Pague com o QR code ou o código copia e cola."
+                  : "Revise o livro e informe o cartão."}
             </p>
 
             <div className="flex gap-4 bg-[#F7F3EA] rounded-xl p-4 mb-5">
@@ -145,6 +160,45 @@ export function PurchaseModal({
             </div>
 
             {!free && (
+              <div
+                role="tablist"
+                aria-label="Forma de pagamento"
+                className="grid grid-cols-2 gap-1 bg-[#EAE5D8] p-1 rounded-xl mb-4"
+              >
+                {(
+                  [
+                    ["card", "Cartão", CreditCard],
+                    ["pix", "Pix", QrCode],
+                  ] as const
+                ).map(([value, label, Icon]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={method === value}
+                    disabled={loading || pixBusy}
+                    onClick={() => {
+                      setMethod(value);
+                      setError("");
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                      method === value
+                        ? "bg-white text-[#1F3D33] shadow-sm"
+                        : "text-[#7A7264] hover:text-[#292824]"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!free && method === "pix" && (
+              <PixPayment book={book} onPaid={handlePixPaid} onBusyChange={setPixBusy} />
+            )}
+
+            {!free && method === "card" && (
               <div className="space-y-3 mb-5">
                 <div className="text-xs text-[#7A7264] bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 leading-relaxed">
                   <strong className="text-amber-800">Pagamento de teste:</strong> nenhum valor é
@@ -211,6 +265,7 @@ export function PurchaseModal({
               </p>
             )}
 
+            {(free || method === "card") && (
             <button
               type="submit"
               disabled={loading}
@@ -227,10 +282,11 @@ export function PurchaseModal({
                   ? "Adicionar à biblioteca"
                   : `Pagar ${fmt(book.price)}`}
             </button>
+            )}
             <button
               type="button"
               onClick={onClose}
-              disabled={loading}
+              disabled={loading || pixBusy}
               className="w-full mt-2 py-2 text-sm text-[#7A7264] hover:text-[#292824] transition-colors"
             >
               Cancelar

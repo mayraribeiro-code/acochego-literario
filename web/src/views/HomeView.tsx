@@ -2,6 +2,7 @@ import { Search, BookOpen, ChevronRight } from "lucide-react";
 import type { Book, View } from "../types";
 import { fmt } from "../lib/format";
 import { Stars } from "../components/Stars";
+import { CoverImage } from "../components/CoverImage";
 import { BookCard } from "../components/BookCard";
 
 export function HomeView({
@@ -159,6 +160,7 @@ export function HomeView({
                       </p>
                     </div>
                   </div>
+                  <CoverImage book={book} />
                 </div>
                 <div className="mt-2.5">
                   <p
@@ -233,28 +235,6 @@ export function HomeView({
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-[#1F3D33] py-10 mt-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-4 h-4 text-white" />
-              </div>
-              <span
-                className="font-bold text-white text-lg"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                Aconchego Literário
-              </span>
-            </div>
-            <p className="text-white/45 text-sm text-center">
-              Sua biblioteca digital pessoal. Descubra, adquira e leia.
-            </p>
-            <p className="text-white/25 text-xs">© 2025 Aconchego Literário</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

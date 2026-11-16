@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -35,7 +36,11 @@ export class CartaoDto {
 export class CreateCompraDto {
   @IsUUID()
   livroId!: string;
-  // Obrigatório para livros pagos; livros gratuitos não passam pelo pagamento.
+  // "cartao" (padrão) ou "pix". Livros gratuitos ignoram.
+  @IsOptional()
+  @IsIn(['cartao', 'pix'])
+  metodo?: 'cartao' | 'pix';
+  // Obrigatório para pagar com cartão um livro pago.
   @IsOptional()
   @ValidateNested()
   @Type(() => CartaoDto)

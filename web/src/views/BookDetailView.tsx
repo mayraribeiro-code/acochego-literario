@@ -5,6 +5,7 @@ import { Stars } from "../components/Stars";
 import { GenreBadge } from "../components/GenreBadge";
 import { DownloadButton } from "../components/DownloadButton";
 import { ReviewsSection } from "../components/ReviewsSection";
+import { CoverImage } from "../components/CoverImage";
 
 export function BookDetailView({
   book,
@@ -80,6 +81,7 @@ export function BookDetailView({
                 </p>
               </div>
             </div>
+            <CoverImage book={book} />
           </div>
 
           {/* Price & actions */}

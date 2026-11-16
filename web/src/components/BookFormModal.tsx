@@ -4,6 +4,7 @@ import type { Book } from "../types";
 import { ApiError, createBook, updateBook, type BookInput } from "../lib/api";
 import { BookCover } from "./BookCover";
 import { BookFilesSection } from "./BookFilesSection";
+import { BookCoverSection } from "./BookCoverSection";
 
 const FORMATS = ["PDF", "EPUB", "PDF + EPUB"];
 
@@ -85,6 +86,7 @@ export function BookFormModal({
   genres,
   onClose,
   onSaved,
+  onCoverChange,
 }: {
   // null = cadastrar um livro novo
   book: Book | null;
@@ -92,8 +94,11 @@ export function BookFormModal({
   genres: string[];
   onClose: () => void;
   onSaved: (book: Book, created: boolean) => void;
+  // A capa é salva na hora; o painel atualiza a lista sem esperar o "Salvar".
+  onCoverChange: (book: Book) => void;
 }) {
   const [form, setForm] = useState<FormState>(() => initialState(book));
+  const [coverUrl, setCoverUrl] = useState(book?.coverUrl ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -149,6 +154,7 @@ export function BookFormModal({
     coverFrom: form.coverFrom,
     coverTo: form.coverTo,
     coverText: form.coverText,
+    coverUrl,
     available: form.available,
     format: form.format,
     active: form.active,
@@ -261,6 +267,19 @@ export function BookFormModal({
                   ))}
                 </div>
               </div>
+              {book ? (
+                <BookCoverSection
+                  book={{ ...book, coverUrl }}
+                  onChange={(updated) => {
+                    setCoverUrl(updated.coverUrl);
+                    onCoverChange(updated);
+                  }}
+                />
+              ) : (
+                <p className="text-xs text-[#7A7264] mt-2">
+                  Depois de cadastrar o livro, abra "Editar" para enviar uma imagem de capa.
+                </p>
+              )}
             </div>
 
             <div className="sm:col-span-2">

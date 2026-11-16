@@ -13,6 +13,7 @@ const PATHS: Record<Exclude<View, "bookDetail">, string> = {
   library: "/biblioteca",
   account: "/conta",
   admin: "/admin",
+  privacy: "/privacidade",
 };
 
 export function pathFor({ view, bookId }: Route) {
@@ -36,6 +37,7 @@ const TITLES: Record<View, string> = {
   library: "Minha Biblioteca",
   account: "Minha conta",
   admin: "Painel Admin",
+  privacy: "Política de Privacidade",
 };
 
 export function documentTitle(view: View, bookTitle?: string) {
