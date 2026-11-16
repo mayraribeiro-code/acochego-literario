@@ -33,13 +33,19 @@ const ARQUIVOS = [
   },
   {
     titulo: 'Memórias Póstumas de Brás Cubas',
-    formato: 'EPUB',
-    arquivos: [{ formato: 'EPUB', nome: 'memorias-postumas-de-bras-cubas.epub' }],
+    formato: 'PDF + EPUB',
+    arquivos: [
+      { formato: 'PDF', nome: 'memorias-postumas-de-bras-cubas.pdf' },
+      { formato: 'EPUB', nome: 'memorias-postumas-de-bras-cubas.epub' },
+    ],
   },
   {
     titulo: 'O Cortiço',
-    formato: 'EPUB',
-    arquivos: [{ formato: 'EPUB', nome: 'o-cortico.epub' }],
+    formato: 'PDF + EPUB',
+    arquivos: [
+      { formato: 'PDF', nome: 'o-cortico.pdf' },
+      { formato: 'EPUB', nome: 'o-cortico.epub' },
+    ],
   },
 ];
 
