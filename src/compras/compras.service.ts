@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, StatusCompra, TipoUsuario } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { Paginacao, skipTake } from '../common/paginacao';
 
 const incluirLivro = {
   livro: { include: { autor: true, genero: true } },
@@ -62,14 +63,20 @@ export class ComprasService {
     });
   }
 
-  listarTodas() {
-    return this.prismaService.compra.findMany({
-      include: {
-        usuario: { select: { id: true, nome: true } },
-        livro: { select: { id: true, titulo: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async listarTodas(paginacao: Paginacao) {
+    const [itens, total] = await this.prismaService.$transaction([
+      this.prismaService.compra.findMany({
+        include: {
+          usuario: { select: { id: true, nome: true } },
+          livro: { select: { id: true, titulo: true } },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        ...skipTake(paginacao),
+      }),
+      this.prismaService.compra.count(),
+    ]);
+
+    return { itens, total, ...paginacao };
   }
 
   async resumo() {

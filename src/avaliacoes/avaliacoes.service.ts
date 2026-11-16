@@ -6,6 +6,7 @@ import {
 import { Prisma, StatusCompra } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SalvarAvaliacaoDto } from './dtos/avaliacao';
+import { Paginacao, skipTake } from '../common/paginacao';
 
 // O que é mostrado de cada avaliação: só o nome de quem avaliou, nunca o email.
 const camposPublicos = {
@@ -21,8 +22,10 @@ const camposPublicos = {
 export class AvaliacoesService {
   constructor(private prismaService: PrismaService) {}
 
-  // Avaliações de um livro do catálogo, das mais recentes para as mais antigas.
-  async listarDoLivro(livroId: string) {
+  // Avaliações de um livro do catálogo, das mais novas para as mais antigas.
+  // A ordem é pela criação (e não pela edição) para que editar uma avaliação
+  // não a mude de página enquanto alguém navega pela lista.
+  async listarDoLivro(livroId: string, paginacao: Paginacao) {
     const livro = await this.prismaService.livro.findFirst({
       where: { id: livroId, ativo: true },
       select: { id: true },
@@ -31,11 +34,17 @@ export class AvaliacoesService {
       throw new NotFoundException('Livro não encontrado');
     }
 
-    return this.prismaService.avaliacao.findMany({
-      where: { livroId },
-      select: camposPublicos,
-      orderBy: { updatedAt: 'desc' },
-    });
+    const [itens, total] = await this.prismaService.$transaction([
+      this.prismaService.avaliacao.findMany({
+        where: { livroId },
+        select: camposPublicos,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        ...skipTake(paginacao),
+      }),
+      this.prismaService.avaliacao.count({ where: { livroId } }),
+    ]);
+
+    return { itens, total, ...paginacao };
   }
 
   // A avaliação do próprio usuário, ou null se ele ainda não avaliou.

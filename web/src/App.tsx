@@ -6,6 +6,7 @@ import {
   fetchLibrary,
   fetchMe,
   getToken,
+  keepSessionAlive,
   signOut,
 } from "./lib/api";
 import { Header } from "./components/Header";
@@ -69,9 +70,10 @@ export default function App() {
     loadCatalog();
 
     // Restaura a sessão salva (token JWT) ao abrir o site.
-    const token = getToken();
-    if (!token) return;
-    fetchMe(token)
+    // Se o token salvo já passou da metade do prazo, renova antes de usá-lo.
+    if (!getToken()) return;
+    keepSessionAlive()
+      .then(() => fetchMe(getToken() ?? ""))
       .then(startSession)
       .catch(() => signOut());
   }, []);

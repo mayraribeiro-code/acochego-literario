@@ -30,6 +30,9 @@ export function AdminView({
   const genres = [...new Set(books.map((b) => b.genre))].sort();
   const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [purchases, setPurchases] = useState<AdminPurchase[]>([]);
+  const [purchasesTotal, setPurchasesTotal] = useState(0);
+  const [purchasesPage, setPurchasesPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -40,7 +43,10 @@ export function AdminView({
   useEffect(() => {
     Promise.all([
       fetchAdminBooks().then(setBooks),
-      fetchAdminPurchases().then(setPurchases),
+      fetchAdminPurchases().then((r) => {
+        setPurchases(r.items);
+        setPurchasesTotal(r.total);
+      }),
       loadSummary(),
     ])
       .catch((err) =>
@@ -48,6 +54,24 @@ export function AdminView({
       )
       .finally(() => setLoading(false));
   }, []);
+
+  async function loadMorePurchases() {
+    setLoadingMore(true);
+    try {
+      const r = await fetchAdminPurchases(purchasesPage + 1);
+      // Compras feitas nesse meio-tempo empurram a lista e podem repetir itens.
+      setPurchases((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...r.items.filter((p) => !seen.has(p.id))];
+      });
+      setPurchasesTotal(r.total);
+      setPurchasesPage((p) => p + 1);
+    } catch (err) {
+      onMessage(err instanceof ApiError ? err.message : "Não foi possível carregar mais compras.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   async function onToggle(id: string) {
     const book = books.find((b) => b.id === id);
@@ -291,6 +315,17 @@ export function AdminView({
               </div>
             ))}
           </div>
+          {purchases.length < purchasesTotal && (
+            <button
+              onClick={loadMorePurchases}
+              disabled={loadingMore}
+              className="mt-4 px-4 py-2 text-sm font-semibold text-[#315C4C] bg-white border border-[rgba(49,92,76,0.2)] rounded-lg hover:bg-[rgba(49,92,76,0.05)] transition-colors disabled:opacity-60"
+            >
+              {loadingMore
+                ? "Carregando…"
+                : `Ver mais compras (${purchasesTotal - purchases.length})`}
+            </button>
+          )}
         </div>
       )}
 

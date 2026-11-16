@@ -30,6 +30,9 @@ export function ReviewsSection({
   onMessage: (message: string) => void;
 }) {
   const [reviews, setReviews] = useState<Review[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [failed, setFailed] = useState(false);
   const [mine, setMine] = useState<Review | null>(null);
 
@@ -39,14 +42,37 @@ export function ReviewsSection({
   useEffect(() => {
     let cancelled = false;
     setReviews(null);
+    setPage(1);
     setFailed(false);
     fetchReviews(book.id)
-      .then((r) => !cancelled && setReviews(r))
+      .then((r) => {
+        if (cancelled) return;
+        setReviews(r.items);
+        setTotal(r.total);
+      })
       .catch(() => !cancelled && setFailed(true));
     return () => {
       cancelled = true;
     };
   }, [book.id]);
+
+  async function loadMore() {
+    setLoadingMore(true);
+    try {
+      const r = await fetchReviews(book.id, page + 1);
+      // Se alguém avaliou nesse meio-tempo, a página seguinte pode repetir itens.
+      setReviews((list) => {
+        const seen = new Set((list ?? []).map((x) => x.id));
+        return [...(list ?? []), ...r.items.filter((x) => !seen.has(x.id))];
+      });
+      setTotal(r.total);
+      setPage((p) => p + 1);
+    } catch (err) {
+      onMessage(err instanceof ApiError ? err.message : "Não foi possível carregar mais avaliações.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +88,8 @@ export function ReviewsSection({
 
   function applyMine(review: Review | null) {
     const previousId = mine?.id;
+    if (!previousId && review) setTotal((t) => t + 1);
+    if (previousId && !review) setTotal((t) => t - 1);
     setMine(review);
     setReviews((list) => {
       const others = (list ?? []).filter((r) => r.id !== previousId);
@@ -74,6 +102,7 @@ export function ReviewsSection({
     try {
       await deleteReview(review.id);
       setReviews((list) => (list ?? []).filter((r) => r.id !== review.id));
+      setTotal((t) => t - 1);
       onChange();
       onMessage("Avaliação removida.");
     } catch (err) {
@@ -144,6 +173,16 @@ export function ReviewsSection({
             </li>
           ))}
         </ul>
+      )}
+
+      {reviews !== null && reviews.length < total && (
+        <button
+          onClick={loadMore}
+          disabled={loadingMore}
+          className="mt-4 px-4 py-2 text-sm font-semibold text-[#315C4C] bg-white border border-[rgba(49,92,76,0.2)] rounded-lg hover:bg-[rgba(49,92,76,0.05)] transition-colors disabled:opacity-60"
+        >
+          {loadingMore ? "Carregando…" : `Ver mais avaliações (${total - reviews.length})`}
+        </button>
       )}
     </section>
   );

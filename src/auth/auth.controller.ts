@@ -26,6 +26,12 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard)
+  @Post('refresh')
+  async refresh(@Request() request: AuthenticatedRequest) {
+    return this.authService.renovar(request.user.sub);
+  }
+
+  @UseGuards(AuthGuard)
   @Get('me')
   async me(@Request() request: AuthenticatedRequest) {
     return this.authService.me(request.user.sub);

@@ -101,6 +101,26 @@ export class AuthService {
     };
   }
 
+  // Troca um token ainda válido por um novo, com o prazo renovado. O site chama
+  // isso enquanto está sendo usado, para ninguém ser deslogado no meio da
+  // leitura. Consulta o banco de novo: conta desativada ou apagada não renova,
+  // e o tipo de usuário sai do banco, não do token antigo.
+  async renovar(usuarioId: string) {
+    const usuario = await this.prismaService.usuario.findUnique({
+      where: { id: usuarioId },
+      include: { conta: { select: { ativo: true } } },
+    });
+
+    if (!usuario) {
+      throw new UnauthorizedException('User not found');
+    }
+    if (!usuario.conta.ativo) {
+      throw new UnauthorizedException('User is not active');
+    }
+
+    return this.gerarToken(usuario);
+  }
+
   private gerarToken(usuario: { id: string; tipoUsuario: TipoUsuario }) {
     const payload: JwtPayload = {
       sub: usuario.id,

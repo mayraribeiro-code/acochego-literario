@@ -4,6 +4,11 @@ import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { ComprasService } from './compras.service';
+import {
+  QueryLimite,
+  QueryPagina,
+  validarPaginacao,
+} from '../common/paginacao';
 
 @Controller('admin')
 @UseGuards(AuthGuard, RolesGuard)
@@ -12,8 +17,8 @@ export class AdminComprasController {
   constructor(private comprasService: ComprasService) {}
 
   @Get('compras')
-  async listar() {
-    return this.comprasService.listarTodas();
+  async listar(@QueryPagina() pagina: number, @QueryLimite() limite: number) {
+    return this.comprasService.listarTodas(validarPaginacao(pagina, limite));
   }
 
   // Números do topo do painel administrativo.

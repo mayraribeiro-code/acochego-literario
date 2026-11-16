@@ -23,5 +23,5 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
   },
-  "exclude": ["node_modules", "dist", "web"]
+  "exclude": ["node_modules", "dist", "web", "prisma.config.ts"]
 }

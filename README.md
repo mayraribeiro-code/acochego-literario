@@ -42,6 +42,7 @@ A API estará disponível em: `http://localhost:3000`
 | POST | `/auth/signup` | público | cria conta de cliente e devolve o token |
 | POST | `/auth/signin` | público | login, devolve o token |
 | GET | `/auth/me` | logado | dados do usuário do token |
+| POST | `/auth/refresh` | logado | troca um token ainda válido por um novo, com prazo renovado (conta desativada não renova) |
 | GET | `/livros` | público | catálogo (só livros ativos) |
 | GET | `/livros/generos` | público | gêneros que têm livros no catálogo |
 | GET | `/livros/:id` | público | detalhe de um livro ativo |
@@ -50,7 +51,7 @@ A API estará disponível em: `http://localhost:3000`
 | GET | `/admin/livros` | admin | todos os livros, inclusive inativos |
 | POST | `/admin/livros` | admin | cadastra livro (autor e gênero pelo nome; são criados se não existirem) |
 | PATCH | `/admin/livros/:id` | admin | edita livro; `{ "ativo": false }` tira do catálogo |
-| GET | `/admin/compras` | admin | todas as compras |
+| GET | `/admin/compras` | admin | todas as compras, paginadas (mais novas primeiro) |
 | GET | `/admin/resumo` | admin | livros ativos, compras, clientes e receita |
 | GET | `/admin/livros/:id/arquivos` | admin | arquivos digitais (PDF/EPUB) do livro |
 | POST | `/admin/livros/:id/arquivos` | admin | envia arquivo (`multipart/form-data`, campo `arquivo`, até 50 MB) |
@@ -60,13 +61,15 @@ A API estará disponível em: `http://localhost:3000`
 | GET | `/leitura/:livroId/:formato/download` | quem comprou | o mesmo arquivo como anexo, com o nome do livro |
 | GET | `/leitura/:livroId/progresso` | quem comprou | onde o usuário parou em cada formato (mais recente primeiro) |
 | PUT | `/leitura/:livroId/progresso` | quem comprou | salva a posição: `{ "formato": "PDF", "posicao": "12", "percentual": 40 }` (no EPUB, `posicao` é o CFI) |
-| GET | `/livros/:livroId/avaliacoes` | público | avaliações do livro (mais recentes primeiro), com o nome de quem avaliou |
+| GET | `/livros/:livroId/avaliacoes` | público | avaliações do livro, paginadas (mais novas primeiro), com o nome de quem avaliou |
 | GET | `/livros/:livroId/avaliacoes/minha` | logado | `{ "avaliacao": ... }` do próprio usuário, ou `null` |
 | PUT | `/livros/:livroId/avaliacoes/minha` | cliente que comprou | avalia ou edita: `{ "nota": 4, "comentario": "opcional" }` |
 | DELETE | `/livros/:livroId/avaliacoes/minha` | logado | remove a própria avaliação |
 | DELETE | `/admin/avaliacoes/:id` | admin | remove qualquer avaliação (moderação) |
 
 Rotas "logado", "cliente" e "admin" exigem o header `Authorization: Bearer <token>`.
+
+Listas paginadas (`/livros/:livroId/avaliacoes` e `/admin/compras`): use `?pagina=1&limite=20` (padrão 1 e 20; limite máximo 100). A resposta é `{ "itens": [...], "total": 57, "pagina": 1, "limite": 20 }`.
 
 Regras de compra:
 - valores ficam em centavos (`precoCentavos`, `valorCentavos`);

@@ -17,6 +17,11 @@ import { Roles } from '../auth/roles.decorator';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { AvaliacoesService } from './avaliacoes.service';
 import { SalvarAvaliacaoDto } from './dtos/avaliacao';
+import {
+  QueryLimite,
+  QueryPagina,
+  validarPaginacao,
+} from '../common/paginacao';
 
 // A lista é pública; "minha" é sempre a avaliação do usuário do token.
 @Controller('livros/:livroId/avaliacoes')
@@ -24,8 +29,15 @@ export class AvaliacoesController {
   constructor(private avaliacoesService: AvaliacoesService) {}
 
   @Get()
-  async listar(@Param('livroId', ParseUUIDPipe) livroId: string) {
-    return this.avaliacoesService.listarDoLivro(livroId);
+  async listar(
+    @Param('livroId', ParseUUIDPipe) livroId: string,
+    @QueryPagina() pagina: number,
+    @QueryLimite() limite: number,
+  ) {
+    return this.avaliacoesService.listarDoLivro(
+      livroId,
+      validarPaginacao(pagina, limite),
+    );
   }
 
   @UseGuards(AuthGuard)

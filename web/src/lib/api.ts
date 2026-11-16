@@ -47,6 +47,19 @@ interface AdminCompraResponse {
   livro: { titulo: string };
 }
 
+// Listas paginadas: a API devolve uma página de itens e o total da lista.
+const PAGE_SIZE = 20;
+
+interface PaginaResponse<T> {
+  itens: T[];
+  total: number;
+}
+
+export interface PageOf<T> {
+  items: T[];
+  total: number;
+}
+
 function toBook(livro: LivroResponse): Book {
   return {
     id: livro.id,
@@ -73,6 +86,7 @@ async function send(
   init: RequestInit & { auth?: boolean } = {},
 ): Promise<Response> {
   const { auth, ...options } = init;
+  if (auth) await keepSessionAlive();
   const token = auth ? getToken() : null;
   // Com FormData o navegador monta o Content-Type (multipart) sozinho.
   const isForm = options.body instanceof FormData;
@@ -139,6 +153,49 @@ function setToken(token: string | null) {
   } catch {
     // Sem storage disponível: a sessão dura só enquanto a página estiver aberta.
   }
+}
+
+// ── Renovação da sessão ───────────────────────────────────────────────────────
+
+// Lê os horários de emissão e de expiração (em segundos) gravados no token.
+function tokenTimes(token: string): { iat: number; exp: number } | null {
+  try {
+    const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const { iat, exp } = JSON.parse(atob(part));
+    return typeof iat === "number" && typeof exp === "number" ? { iat, exp } : null;
+  } catch {
+    return null;
+  }
+}
+
+let refreshing: Promise<void> | null = null;
+
+// Enquanto o site é usado, troca o token por um novo quando já passou da
+// metade do prazo; assim ninguém é deslogado no meio da leitura. Token já
+// vencido não é renovado: a requisição falha e o usuário entra de novo.
+export async function keepSessionAlive() {
+  const token = getToken();
+  const times = token && tokenTimes(token);
+  if (!token || !times) return;
+  const now = Date.now() / 1000;
+  if (now >= times.exp || times.exp - now > (times.exp - times.iat) / 2) return;
+
+  // Várias requisições ao mesmo tempo esperam a mesma renovação.
+  refreshing ??= fetch(`${API_URL}/auth/refresh`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then(async (res) => {
+      if (!res.ok) return;
+      const { accessToken } = (await res.json()) as { accessToken: string };
+      // Só troca se ninguém saiu ou entrou com outra conta nesse meio-tempo.
+      if (getToken() === token) setToken(accessToken);
+    })
+    .catch(() => {})
+    .finally(() => {
+      refreshing = null;
+    });
+  await refreshing;
 }
 
 export async function fetchMe(token: string): Promise<AppUser> {
@@ -333,10 +390,12 @@ function toReview(a: AvaliacaoResponse): Review {
   };
 }
 
-// Avaliações públicas do livro, das mais recentes para as mais antigas.
-export async function fetchReviews(bookId: string) {
-  const r = await request<AvaliacaoResponse[]>(`/livros/${bookId}/avaliacoes`);
-  return r.map(toReview);
+// Avaliações públicas do livro, das mais novas para as mais antigas, uma página por vez.
+export async function fetchReviews(bookId: string, page = 1): Promise<PageOf<Review>> {
+  const r = await request<PaginaResponse<AvaliacaoResponse>>(
+    `/livros/${bookId}/avaliacoes?pagina=${page}&limite=${PAGE_SIZE}`,
+  );
+  return { items: r.itens.map(toReview), total: r.total };
 }
 
 // A avaliação do usuário logado, ou null se ele ainda não avaliou.
@@ -413,14 +472,21 @@ export async function fetchAdminSummary(): Promise<AdminSummary> {
   };
 }
 
-export async function fetchAdminPurchases(): Promise<AdminPurchase[]> {
-  const compras = await request<AdminCompraResponse[]>("/admin/compras", { auth: true });
-  return compras.map((c) => ({
+export async function fetchAdminPurchases(page = 1): Promise<PageOf<AdminPurchase>> {
+  const r = await request<PaginaResponse<AdminCompraResponse>>(
+    `/admin/compras?pagina=${page}&limite=${PAGE_SIZE}`,
+    { auth: true },
+  );
+  return { items: r.itens.map(toAdminPurchase), total: r.total };
+}
+
+function toAdminPurchase(c: AdminCompraResponse): AdminPurchase {
+  return {
     id: c.id,
     client: c.usuario.nome,
     book: c.livro.titulo,
     date: new Date(c.createdAt).toLocaleDateString("pt-BR"),
     value: c.valorCentavos / 100,
     status: c.status,
-  }));
+  };
 }
