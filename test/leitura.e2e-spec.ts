@@ -84,6 +84,59 @@ describe('Arquivos e leitura', () => {
       .expect(404);
   });
 
+  it('devolve o progresso da biblioteca, um item por livro, só de livros comprados', async () => {
+    const { token } = await cadastrarCliente(app);
+    await comprar(app, token, livroId).expect(201);
+    const outro = await criarLivro(app, tokenAdmin);
+    await comprar(app, token, outro).expect(201);
+
+    const salvar = (id: string, formato: string, percentual: number) =>
+      http(app)
+        .put(`/leitura/${id}/progresso`)
+        .set(bearer(token))
+        .send({ formato, posicao: '1', percentual })
+        .expect(200);
+    await salvar(livroId, 'EPUB', 10);
+    await salvar(livroId, 'PDF', 30);
+    await salvar(outro, 'PDF', 70);
+
+    const res = await http(app)
+      .get('/leitura/progresso')
+      .set(bearer(token))
+      .expect(200);
+    const lista = res.body as {
+      livroId: string;
+      formato: string;
+      percentual: number;
+    }[];
+    expect(lista).toHaveLength(2);
+    expect(lista.find((p) => p.livroId === livroId)).toMatchObject({
+      formato: 'PDF',
+      percentual: 30,
+    });
+
+    // Compra cancelada some da lista.
+    const compras = await http(app)
+      .get('/admin/compras?limite=100')
+      .set(bearer(tokenAdmin));
+    const compraOutro = (
+      compras.body as {
+        itens: { id: string; livroId: string; usuarioId: string }[];
+      }
+    ).itens.find((c) => c.livroId === outro);
+    await http(app)
+      .post(`/admin/compras/${compraOutro!.id}/cancelar`)
+      .set(bearer(tokenAdmin))
+      .expect(200);
+    const depois = await http(app)
+      .get('/leitura/progresso')
+      .set(bearer(token))
+      .expect(200);
+    expect(depois.body).toHaveLength(1);
+
+    await http(app).get('/leitura/progresso').expect(401);
+  });
+
   it('salva e devolve o progresso de leitura', async () => {
     const { token } = await cadastrarCliente(app);
     await comprar(app, token, livroId).expect(201);

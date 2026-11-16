@@ -14,6 +14,23 @@ npm run dev
 
 Abra http://localhost:5173. Em desenvolvimento, as chamadas para `/api/*` são encaminhadas para `http://localhost:3000` (ver `vite.config.ts`). Em produção, defina `VITE_API_URL`.
 
+## Endereços das telas
+
+Cada tela tem um endereço, então o F5 e os botões voltar/avançar do navegador funcionam:
+
+| Endereço | Tela |
+| --- | --- |
+| `/` | início |
+| `/catalogo` | catálogo |
+| `/livro/<id>` | detalhe do livro |
+| `/biblioteca` | Minha Biblioteca (cliente) |
+| `/conta` | Minha conta |
+| `/admin` | painel administrativo |
+
+O leitor abre por cima da tela do livro ou da biblioteca; o voltar do navegador o fecha. As rotas estão em `src/lib/routes.ts`, sem biblioteca de rotas.
+
+Ao hospedar o site, configure o servidor para responder qualquer endereço com o `index.html` ("SPA fallback"); senão um F5 em `/catalogo` dá 404. O `npm run dev` e o `npm run preview` do Vite já fazem isso.
+
 ## O que vem da API
 
 Tudo: login/cadastro, catálogo e gêneros, compras e "Minha Biblioteca", o leitor digital e o painel admin (resumo, lista de compras, cadastro/edição de livros e envio dos arquivos PDF/EPUB). Os endpoints estão no README da livraria-api.
@@ -35,8 +52,9 @@ O botão "Baixar" (na página do livro e na Minha Biblioteca) consulta os arquiv
 ```
 src/
   App.tsx            navegação entre telas e estado da sessão
-  views/             Home, Catálogo, Detalhe do livro, Minha Biblioteca, Leitor, Admin
+  views/             Home, Catálogo, Detalhe do livro, Minha Biblioteca, Minha conta, Leitor, Admin
   components/        Header, modais de login, compra e livro, arquivos do livro, cards, capa, toast
+  lib/routes.ts      endereço de cada tela e título da aba
   lib/api.ts         cliente da livraria-api (converte os dados da API para o formato das telas)
   styles/            tokens de cor/tipografia do design
 ```

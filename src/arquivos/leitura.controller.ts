@@ -24,6 +24,12 @@ import { SalvarProgressoDto } from './dtos/progresso';
 export class LeituraController {
   constructor(private arquivosService: ArquivosService) {}
 
+  // Precisa vir antes de ":livroId"; senão "progresso" seria lido como um id.
+  @Get('progresso')
+  async progressoDaBiblioteca(@Request() request: AuthenticatedRequest) {
+    return this.arquivosService.progressoDaBiblioteca(request.user.sub);
+  }
+
   @Get(':livroId')
   async formatos(
     @Request() request: AuthenticatedRequest,

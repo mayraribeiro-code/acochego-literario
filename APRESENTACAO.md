@@ -53,12 +53,14 @@ Situação da Ana no início: tem **Dom Casmurro** (parou na página 34 do PDF) 
 
 ### 2. Entrar e ver a biblioteca (1 min)
 - **Entrar** com a Ana.
-- **Minha Biblioteca**: os dois livros dela.
+- **Minha Biblioteca**: os dois livros dela; Dom Casmurro mostra "28% lido" e o botão **Continuar**.
+- Ponto para falar: cada tela tem endereço próprio (`/catalogo`, `/livro/...`, `/biblioteca`); o F5 e o voltar do navegador funcionam.
 
 ### 3. Leitor digital (2 min)
 - Em Dom Casmurro, **Ler agora**: abre direto na **página 34 de 121**, onde ela parou.
 - Avance algumas páginas e troque para **EPUB** no canto superior direito.
-- Feche e abra de novo: continua de onde parou.
+- Feche (ou use o voltar do navegador) e abra de novo: continua de onde parou.
+- No celular, prefira o EPUB: o texto se ajusta à tela, enquanto o PDF mantém o tamanho de página A4.
 - Ponto para falar: o arquivo não tem link público; a API só entrega para quem comprou, com o token de login.
 
 ### 4. Compra com pagamento (2 min)

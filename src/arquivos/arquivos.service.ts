@@ -129,6 +129,33 @@ export class ArquivosService {
   }
 
   // Onde o usuário parou em cada formato, do mais recente para o mais antigo.
+  // Para a "Minha Biblioteca": a leitura mais recente de cada livro comprado
+  // (um item por livro, no formato lido por último).
+  async progressoDaBiblioteca(usuarioId: string) {
+    const progressos = await this.prismaService.progressoLeitura.findMany({
+      where: {
+        usuarioId,
+        livro: {
+          compras: { some: { usuarioId, status: StatusCompra.confirmada } },
+        },
+      },
+      select: {
+        livroId: true,
+        formato: true,
+        percentual: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const vistos = new Set<string>();
+    return progressos.filter((p) => {
+      if (vistos.has(p.livroId)) return false;
+      vistos.add(p.livroId);
+      return true;
+    });
+  }
+
   async progresso(usuarioId: string, livroId: string) {
     await this.garantirQuePossui(usuarioId, livroId);
 

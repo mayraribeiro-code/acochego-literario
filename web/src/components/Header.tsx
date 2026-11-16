@@ -24,7 +24,8 @@ export function Header({
 
   const navItems = [
     { label: "Catálogo", view: "catalog" as View },
-    ...(currentUser
+    // Admin não compra livros, então não tem biblioteca.
+    ...(currentUser?.role === "client"
       ? [{ label: "Minha Biblioteca", view: "library" as View }]
       : []),
     ...(currentUser?.role === "admin"
@@ -116,16 +117,18 @@ export function Header({
                           {currentUser.email}
                         </p>
                       </div>
-                      <button
-                        onClick={() => {
-                          onNavigate("library");
-                          setUserMenuOpen(false);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#292824] hover:bg-[rgba(49,92,76,0.05)] transition-colors"
-                      >
-                        <Library className="w-4 h-4 text-[#315C4C]" />
-                        Minha Biblioteca
-                      </button>
+                      {currentUser.role === "client" && (
+                        <button
+                          onClick={() => {
+                            onNavigate("library");
+                            setUserMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#292824] hover:bg-[rgba(49,92,76,0.05)] transition-colors"
+                        >
+                          <Library className="w-4 h-4 text-[#315C4C]" />
+                          Minha Biblioteca
+                        </button>
+                      )}
                       {currentUser.role === "admin" && (
                         <button
                           onClick={() => {

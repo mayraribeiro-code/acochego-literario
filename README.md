@@ -66,6 +66,7 @@ Cria clientes (`ana@demo.com`, senha `demo1234`), compras, avaliações e os arq
 | GET | `/admin/livros/:id/arquivos` | admin | arquivos digitais (PDF/EPUB) do livro |
 | POST | `/admin/livros/:id/arquivos` | admin | envia arquivo (`multipart/form-data`, campo `arquivo`, até 50 MB) |
 | DELETE | `/admin/livros/:id/arquivos/:formato` | admin | remove o arquivo `PDF` ou `EPUB` |
+| GET | `/leitura/progresso` | logado | leitura mais recente de cada livro da biblioteca (para a "Minha Biblioteca") |
 | GET | `/leitura/:livroId` | quem comprou | formatos disponíveis para leitura |
 | GET | `/leitura/:livroId/:formato` | quem comprou | conteúdo do arquivo, para o leitor do site |
 | GET | `/leitura/:livroId/:formato/download` | quem comprou | o mesmo arquivo como anexo, com o nome do livro |

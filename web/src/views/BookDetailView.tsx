@@ -34,7 +34,7 @@ export function BookDetailView({
         className="flex items-center gap-2 text-sm text-[#315C4C] hover:text-[#1F3D33] mb-6 transition-colors group"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-        Voltar ao catálogo
+        Voltar
       </button>
 
       <div className="grid md:grid-cols-[260px_1fr] gap-8 lg:gap-12">
@@ -42,7 +42,7 @@ export function BookDetailView({
         <div className="space-y-4">
           {/* Cover */}
           <div
-            className="w-full aspect-[2/3] rounded-2xl shadow-2xl relative overflow-hidden"
+            className="w-full max-w-[200px] mx-auto md:max-w-none aspect-[2/3] rounded-2xl shadow-2xl relative overflow-hidden"
             style={{
               background: `linear-gradient(155deg, ${book.coverFrom}, ${book.coverTo})`,
             }}
@@ -106,7 +106,11 @@ export function BookDetailView({
               </div>
             ) : (
               <>
-                {book.available ? (
+                {currentUser?.role === "admin" ? (
+                  <p className="text-sm text-[#7A7264] bg-[#F7F3EA] px-3 py-2.5 rounded-lg text-center">
+                    Contas de administrador não compram livros.
+                  </p>
+                ) : book.available ? (
                   <button
                     onClick={() =>
                       currentUser ? onBuy(book) : onOpenAuth("login")

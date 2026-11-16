@@ -389,6 +389,19 @@ export async function fetchReadingProgress(bookId: string): Promise<ReadingProgr
   return r.map((p) => ({ format: p.formato, position: p.posicao, percent: p.percentual }));
 }
 
+// Leitura mais recente de cada livro da biblioteca, por id do livro.
+export async function fetchLibraryProgress(): Promise<
+  Record<string, { format: BookFileFormat; percent: number }>
+> {
+  const r = await request<{ livroId: string; formato: BookFileFormat; percentual: number }[]>(
+    "/leitura/progresso",
+    { auth: true },
+  );
+  return Object.fromEntries(
+    r.map((p) => [p.livroId, { format: p.formato, percent: p.percentual }]),
+  );
+}
+
 // keepalive deixa a requisição terminar mesmo se a aba for fechada.
 export async function saveReadingProgress(
   bookId: string,
