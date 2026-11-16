@@ -50,6 +50,11 @@ A API estará disponível em: `http://localhost:3000`
 | PATCH | `/admin/livros/:id` | admin | edita livro; `{ "ativo": false }` tira do catálogo |
 | GET | `/admin/compras` | admin | todas as compras |
 | GET | `/admin/resumo` | admin | livros ativos, compras, clientes e receita |
+| GET | `/admin/livros/:id/arquivos` | admin | arquivos digitais (PDF/EPUB) do livro |
+| POST | `/admin/livros/:id/arquivos` | admin | envia arquivo (`multipart/form-data`, campo `arquivo`, até 50 MB) |
+| DELETE | `/admin/livros/:id/arquivos/:formato` | admin | remove o arquivo `PDF` ou `EPUB` |
+| GET | `/leitura/:livroId` | quem comprou | formatos disponíveis para leitura |
+| GET | `/leitura/:livroId/:formato` | quem comprou | conteúdo do arquivo, para o leitor do site |
 
 Rotas "logado", "cliente" e "admin" exigem o header `Authorization: Bearer <token>`.
 
@@ -59,6 +64,13 @@ Regras de compra:
 - não dá para comprar livro inativo (404), indisponível (400) ou que você já tem (409);
 - a compra é registrada direto como `confirmada`, porque ainda não há pagamento;
 - livros desativados continuam na biblioteca de quem já comprou.
+
+Arquivos dos livros:
+- ficam na pasta `STORAGE_DIR` (padrão `./storage`, fora do git), com nome gerado pela API;
+- o formato é detectado pelo conteúdo do arquivo; um `.txt` renomeado para `.pdf` é recusado;
+- cada livro tem no máximo um arquivo por formato, e reenviar substitui o anterior;
+- não existe link público: `/leitura` só entrega o arquivo para quem tem compra confirmada (nem o admin lê por ali);
+- cadastre apenas arquivos que você tem direito de distribuir.
 
 ## 🛠️ Comandos úteis do NestJS
 

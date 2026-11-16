@@ -91,9 +91,10 @@ model Livro {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  autor   Autor    @relation(fields: [autorId], references: [id])
-  genero  Genero   @relation(fields: [generoId], references: [id])
-  compras Compra[]
+  autor    Autor            @relation(fields: [autorId], references: [id])
+  genero   Genero           @relation(fields: [generoId], references: [id])
+  compras  Compra[]
+  arquivos ArquivoDigital[]
 
   @@index([autorId])
   @@index([generoId])
@@ -117,4 +118,27 @@ model Compra {
   @@unique([usuarioId, livroId])
   @@index([livroId])
   @@map("compras")
+}
+
+enum FormatoArquivo {
+  PDF
+  EPUB
+}
+
+// Arquivo do livro guardado no servidor (pasta definida em STORAGE_DIR).
+// O caminho é gerado pela API, nunca vem do nome enviado no upload.
+model ArquivoDigital {
+  id           String         @id @default(uuid())
+  livroId      String         @map("livro_id")
+  formato      FormatoArquivo
+  nomeOriginal String         @map("nome_original")
+  caminho      String         @unique
+  tamanhoBytes Int            @map("tamanho_bytes")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  livro Livro @relation(fields: [livroId], references: [id], onDelete: Cascade)
+
+  @@unique([livroId, formato])
+  @@map("arquivos_digitais")
 }

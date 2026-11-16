@@ -8,4 +8,5 @@ export const envValidationSchema = Joi.object({
   DATABASE_URL: Joi.string().required(),
   JWT_SECRET: Joi.string().min(32).required(),
   JWT_EXPIRES_IN: Joi.string().default('1h'),
+  STORAGE_DIR: Joi.string().default('./storage'),
 });
