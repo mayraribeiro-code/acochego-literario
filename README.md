@@ -35,6 +35,12 @@ npm run start:dev
 
 A API estará disponível em: `http://localhost:3000`
 
+**5. (Opcional) Dados de demonstração**
+```bash
+npm run demo
+```
+Cria clientes (`ana@demo.com`, senha `demo1234`), compras, avaliações e os arquivos de três livros em domínio público. Pode rodar de novo para resetar a demonstração. O passo a passo da apresentação está em [APRESENTACAO.md](APRESENTACAO.md).
+
 ## 📚 Endpoints
 
 | Método | Rota | Acesso | O que faz |

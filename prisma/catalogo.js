@@ -22,7 +22,7 @@ module.exports = [
     precoCentavos: 1790,
     sinopse:
       'Narrado por um defunto-autor, Brás Cubas conta sua própria vida depois de morto, com ironia, pessimismo lúcido e inovação formal que chocaram o Brasil do século XIX. Um dos fundadores do Realismo brasileiro, o romance é ao mesmo tempo uma crítica social devastadora e um experimento literário de rara elegância — antecipando técnicas que só seriam amplamente exploradas no século XX.',
-    formato: 'PDF',
+    formato: 'EPUB',
     disponivel: true,
     capaCorInicio: '#292824',
     capaCorFim: '#4A3728',
@@ -64,7 +64,7 @@ module.exports = [
     precoCentavos: 1490,
     sinopse:
       'Um retrato cru e vibrante da sociedade carioca do século XIX. O Cortiço descreve a vida coletiva em uma habitação popular, explorando com realismo brutal temas como classe social, sexualidade, determinismo e a luta cotidiana pela sobrevivência. Um documento literário e social de extraordinária força e honestidade.',
-    formato: 'PDF',
+    formato: 'EPUB',
     disponivel: true,
     capaCorInicio: '#7A0000',
     capaCorFim: '#A83232',
