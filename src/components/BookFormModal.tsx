@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import type { Book } from "../types";
 import { ApiError, createBook, updateBook, type BookInput } from "../lib/api";
 import { BookCover } from "./BookCover";
+import { BookFilesSection } from "./BookFilesSection";
 
 const FORMATS = ["PDF", "EPUB", "PDF + EPUB"];
 
@@ -260,6 +261,17 @@ export function BookFormModal({
                   ))}
                 </div>
               </div>
+            </div>
+
+            <div className="sm:col-span-2">
+              <p className={labelCls}>Arquivos digitais</p>
+              {book ? (
+                <BookFilesSection bookId={book.id} />
+              ) : (
+                <p className="text-sm text-[#7A7264] bg-[#F7F3EA] rounded-xl p-4">
+                  Depois de cadastrar o livro, abra "Editar" para enviar o PDF ou EPUB.
+                </p>
+              )}
             </div>
           </div>
 

@@ -5,10 +5,10 @@ import { BookCover } from "../components/BookCover";
 
 export function LibraryView({
   myBooks,
-  onSelectBook,
+  onRead,
 }: {
   myBooks: Book[];
-  onSelectBook: (b: Book) => void;
+  onRead: (b: Book) => void;
 }) {
 
   return (
@@ -63,7 +63,7 @@ export function LibraryView({
               </div>
               <div className="px-4 pb-4 flex gap-2">
                 <button
-                  onClick={() => onSelectBook(book)}
+                  onClick={() => onRead(book)}
                   className="flex-1 py-2 bg-[#315C4C] text-white text-xs font-semibold rounded-lg hover:bg-[#1F3D33] transition-colors flex items-center justify-center gap-1.5"
                 >
                   <BookOpen className="w-3.5 h-3.5" /> Ler

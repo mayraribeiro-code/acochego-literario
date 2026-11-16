@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import type { AppUser, AuthMode, Book, View } from "./types";
 import {
   fetchBooks,
@@ -17,6 +17,11 @@ import { CatalogView } from "./views/CatalogView";
 import { BookDetailView } from "./views/BookDetailView";
 import { LibraryView } from "./views/LibraryView";
 import { AdminView } from "./views/AdminView";
+
+// O leitor (pdf.js e epub.js) só é baixado quando alguém abre um livro.
+const ReaderView = lazy(() =>
+  import("./views/ReaderView").then((m) => ({ default: m.ReaderView })),
+);
 
 type LoadStatus = "loading" | "error" | "ready";
 
@@ -43,6 +48,8 @@ export default function App() {
     open: boolean;
     book: Book | null;
   }>({ open: false, book: null });
+
+  const [readingBook, setReadingBook] = useState<Book | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState<string | null>(null);
@@ -118,6 +125,7 @@ export default function App() {
 
   function handleLogout() {
     signOut();
+    setReadingBook(null);
     setCurrentUser(null);
     setMyBooks([]);
     navigate("home");
@@ -189,13 +197,13 @@ export default function App() {
             onBack={() => navigate(prevView)}
             onBuy={handleBuy}
             onOpenAuth={openAuth}
-            onRead={() => setToast("Leitor digital em breve disponível.")}
+            onRead={() => setReadingBook(selectedBook)}
             onDownload={() => setToast("Download em breve disponível.")}
           />
         )}
 
         {view === "library" && currentUser && (
-          <LibraryView myBooks={myBooks} onSelectBook={selectBook} />
+          <LibraryView myBooks={myBooks} onRead={setReadingBook} />
         )}
 
         {view === "admin" && currentUser?.role === "admin" && (
@@ -221,6 +229,12 @@ export default function App() {
           onClose={() => setPurchaseModal({ open: false, book: null })}
           onConfirm={handlePurchaseConfirm}
         />
+      )}
+
+      {readingBook && currentUser && (
+        <Suspense fallback={null}>
+          <ReaderView book={readingBook} onClose={() => setReadingBook(null)} />
+        </Suspense>
       )}
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
